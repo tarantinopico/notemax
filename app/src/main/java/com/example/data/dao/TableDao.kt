@@ -40,9 +40,6 @@ interface TableDao {
     @Query("SELECT * FROM tables WHERE folderId = :folderId ORDER BY updatedAt DESC")
     fun getTablesInFolder(folderId: Long): Flow<List<TableEntity>>
 
-    @Query("SELECT * FROM tables WHERE folderId IS NULL ORDER BY updatedAt DESC")
-    fun getRootTables(): Flow<List<TableEntity>>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTable(table: TableEntity): Long
 

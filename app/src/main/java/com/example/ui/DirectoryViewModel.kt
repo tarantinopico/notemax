@@ -157,7 +157,7 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
 
     fun createTable(title: String) {
         if (title.isBlank()) return
-        val parentId = _currentFolderId.value
+        val parentId = _currentFolderId.value ?: return
         viewModelScope.launch {
             try {
                 val now = System.currentTimeMillis()

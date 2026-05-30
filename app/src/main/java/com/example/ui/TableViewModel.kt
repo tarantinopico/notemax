@@ -21,13 +21,6 @@ class TableViewModel(private val repository: NoteMaxRepository) : ViewModel() {
     private val _currentTableId = MutableStateFlow<Long?>(null)
     val currentTableId: StateFlow<Long?> = _currentTableId
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error
-
-    fun dismissError() {
-        _error.value = null
-    }
-
     @OptIn(ExperimentalCoroutinesApi::class)
     val fullTable = _currentTableId.flatMapLatest { id ->
         if (id == null) flowOf(null) else repository.getFullTableFlow(id)
@@ -40,9 +33,7 @@ class TableViewModel(private val repository: NoteMaxRepository) : ViewModel() {
     fun updateTableTitle(title: String) {
         val table = fullTable.value?.table ?: return
         viewModelScope.launch {
-            try {
-                repository.updateTable(table.copy(title = title, updatedAt = System.currentTimeMillis()))
-            } catch (e: Exception) { _error.value = "Failed to update title: ${e.localizedMessage}" }
+            repository.updateTable(table.copy(title = title, updatedAt = System.currentTimeMillis()))
         }
     }
 
@@ -50,21 +41,17 @@ class TableViewModel(private val repository: NoteMaxRepository) : ViewModel() {
         val table = fullTable.value?.table ?: return
         val currentRows = fullTable.value?.rows ?: emptyList()
         viewModelScope.launch {
-            try {
-                val order = currentRows.size
-                repository.insertRow(RowEntity(tableId = table.id, displayOrder = order))
-                updateTableTimestamp(table)
-            } catch (e: Exception) { _error.value = "Failed to add row: ${e.localizedMessage}" }
+            val order = currentRows.size
+            repository.insertRow(RowEntity(tableId = table.id, displayOrder = order))
+            updateTableTimestamp(table)
         }
     }
 
     fun deleteRow(row: RowEntity) {
         val table = fullTable.value?.table ?: return
         viewModelScope.launch {
-            try {
-                repository.deleteRow(row)
-                updateTableTimestamp(table)
-            } catch (e: Exception) { _error.value = "Failed to delete row: ${e.localizedMessage}" }
+            repository.deleteRow(row)
+            updateTableTimestamp(table)
         }
     }
 
@@ -73,32 +60,26 @@ class TableViewModel(private val repository: NoteMaxRepository) : ViewModel() {
         val table = fullTable.value?.table ?: return
         val currentColumns = fullTable.value?.columns ?: emptyList()
         viewModelScope.launch {
-            try {
-                val order = currentColumns.size
-                repository.insertColumn(ColumnEntity(tableId = table.id, name = name, type = type, displayOrder = order))
-                updateTableTimestamp(table)
-            } catch (e: Exception) { _error.value = "Failed to add column: ${e.localizedMessage}" }
+            val order = currentColumns.size
+            repository.insertColumn(ColumnEntity(tableId = table.id, name = name, type = type, displayOrder = order))
+            updateTableTimestamp(table)
         }
     }
 
     fun updateCell(rowId: Long, columnId: Long, value: String) {
         val table = fullTable.value?.table ?: return
         viewModelScope.launch {
-            try {
-                val cell = repository.getCell(rowId, columnId)
-                if (cell != null) {
-                    repository.updateCell(cell.copy(value = value))
-                } else {
-                    repository.insertCell(CellEntity(rowId = rowId, columnId = columnId, value = value))
-                }
-                updateTableTimestamp(table)
-            } catch (e: Exception) { _error.value = "Failed to update cell: ${e.localizedMessage}" }
+            val cell = repository.getCell(rowId, columnId)
+            if (cell != null) {
+                repository.updateCell(cell.copy(value = value))
+            } else {
+                repository.insertCell(CellEntity(rowId = rowId, columnId = columnId, value = value))
+            }
+            updateTableTimestamp(table)
         }
     }
     
     private suspend fun updateTableTimestamp(table: TableEntity) {
-        try {
-            repository.updateTable(table.copy(updatedAt = System.currentTimeMillis()))
-        } catch (e: Exception) { _error.value = "Failed to update table timestamp: ${e.localizedMessage}" }
+        repository.updateTable(table.copy(updatedAt = System.currentTimeMillis()))
     }
 }

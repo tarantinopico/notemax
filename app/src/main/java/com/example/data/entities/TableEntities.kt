@@ -2,7 +2,6 @@ package com.example.data.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
@@ -14,12 +13,11 @@ import androidx.room.PrimaryKey
             childColumns = ["folderId"],
             onDelete = ForeignKey.CASCADE
         )
-    ],
-    indices = [Index("folderId")]
+    ]
 )
 data class TableEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val folderId: Long? = null,
+    val folderId: Long,
     val title: String,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
@@ -36,8 +34,7 @@ enum class ColumnType { TEXT, NUMBER, LONG_TEXT, SELECT }
             childColumns = ["tableId"],
             onDelete = ForeignKey.CASCADE
         )
-    ],
-    indices = [Index("tableId")]
+    ]
 )
 data class ColumnEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -56,8 +53,7 @@ data class ColumnEntity(
             childColumns = ["tableId"],
             onDelete = ForeignKey.CASCADE
         )
-    ],
-    indices = [Index("tableId")]
+    ]
 )
 data class RowEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -80,8 +76,7 @@ data class RowEntity(
             childColumns = ["columnId"],
             onDelete = ForeignKey.CASCADE
         )
-    ],
-    indices = [Index("rowId"), Index("columnId")]
+    ]
 )
 data class CellEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

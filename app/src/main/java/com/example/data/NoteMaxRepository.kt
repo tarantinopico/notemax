@@ -29,14 +29,13 @@ class NoteMaxRepository(
         return if (parentId == null) noteDao.getRootNotes() else noteDao.getNotesInParent(parentId)
     }
 
-    fun getTables(parentId: Long?): Flow<List<TableEntity>> {
-        return if (parentId == null) tableDao.getRootTables() else tableDao.getTablesInFolder(parentId)
-    }
-
     fun getImages(parentId: Long?): Flow<List<ImageEntity>> {
         return if (parentId == null) kotlinx.coroutines.flow.flowOf(emptyList()) else imageDao.getImagesInFolder(parentId)
     }
 
+    fun getTables(parentId: Long?): Flow<List<TableEntity>> {
+        return if (parentId == null) kotlinx.coroutines.flow.flowOf(emptyList()) else tableDao.getTablesInFolder(parentId)
+    }
 
     fun getFullTableFlow(tableId: Long): Flow<FullTable?> = tableDao.getFullTableFlow(tableId)
     suspend fun insertTable(table: TableEntity): Long = tableDao.insertTable(table)
