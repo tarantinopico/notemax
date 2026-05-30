@@ -28,11 +28,22 @@ class MarkdownVisualTransformation(private val primaryColor: Color) : VisualTran
                 currentIndex += line.length + 1
             }
             
-            val regex = Regex("(#important)|(@todo)|(==>)|(\\[\\[.*?\\]\\])|(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
+            val regex = Regex("(#important)|(@todo)|(==>)|([$]{2}TAG_BEGIN[$]{2}.*?[$]{2}TAG_END[$]{2})|(\\[\\[.*?\\]\\])|(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
+            val tagInnerRegex = Regex("[$]{2}TAG_BEGIN[$]{2}color:([0-9A-Fa-f]{6}),textColor:([0-9A-Fa-f]{6}),text:(.*?)[$]{2}TAG_END[$]{2}")
             val matches = regex.findAll(text.text)
             for (match in matches) {
                 val matchText = match.value
                 when {
+                    matchText.startsWith("$$" + "TAG_BEGIN" + "$$") -> {
+                        val tagMatch = tagInnerRegex.matchEntire(matchText)
+                        if (tagMatch != null) {
+                            val bgColor = Color(android.graphics.Color.parseColor("#" + tagMatch.groupValues[1]))
+                            val fgColor = Color(android.graphics.Color.parseColor("#" + tagMatch.groupValues[2]))
+                            addStyle(SpanStyle(background = bgColor.copy(alpha = 0.2f), color = fgColor, fontWeight = FontWeight.Bold), match.range.first, match.range.last + 1)
+                        } else {
+                            addStyle(SpanStyle(color = Color.Gray), match.range.first, match.range.last + 1)
+                        }
+                    }
                     matchText == "#important" -> addStyle(SpanStyle(background = Color(0x33FF0000), color = Color(0xFFFF0000), fontWeight = FontWeight.Bold, fontSize = 12.sp), match.range.first, match.range.last + 1)
                     matchText == "@todo" -> addStyle(SpanStyle(background = Color(0x330000FF), color = Color(0xFF0000FF), fontWeight = FontWeight.Bold, fontSize = 12.sp), match.range.first, match.range.last + 1)
                     matchText == "==>" -> addStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold), match.range.first, match.range.last + 1)

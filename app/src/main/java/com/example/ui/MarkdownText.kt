@@ -141,6 +141,39 @@ fun MarkdownText(text: String, modifier: Modifier = Modifier, onNoteLinkClick: (
         }
     )
 
+    val tagRegex = Regex("[$]{2}TAG_BEGIN[$]{2}color:([0-9A-Fa-f]{6}),textColor:([0-9A-Fa-f]{6}),text:(.*?)[$]{2}TAG_END[$]{2}")
+    val contentMap = mutableMapOf<String, InlineTextContent>()
+    contentMap.putAll(inlineContent)
+    
+    tagRegex.findAll(text).forEach { match ->
+        val colorStr = match.groupValues[1]
+        val textColorStr = match.groupValues[2]
+        val textStr = match.groupValues[3]
+        
+        val bgColor = Color(android.graphics.Color.parseColor("#$colorStr"))
+        val fgColor = Color(android.graphics.Color.parseColor("#$textColorStr"))
+        
+        val id = "tag_${colorStr}_${textColorStr}_${textStr}"
+        contentMap[id] = InlineTextContent(
+            Placeholder(
+                width = (textStr.length * 8 + 24).sp,
+                height = 24.sp,
+                placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(bgColor)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(textStr, color = fgColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
     Column(modifier = modifier) {
         blocks.forEach { block ->
             when (block) {
@@ -150,7 +183,7 @@ fun MarkdownText(text: String, modifier: Modifier = Modifier, onNoteLinkClick: (
                     Text(
                         text = annotatedString,
                         style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground, lineHeight = 28.sp),
-                        inlineContent = inlineContent,
+                        inlineContent = contentMap,
                         modifier = Modifier.fillMaxWidth().pointerInput(Unit) {
                             detectTapGestures { pos ->
                                 layoutResult?.let { layout ->

@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -209,89 +212,95 @@ fun DirectoryScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).background(MaterialTheme.colorScheme.background)) {
-            val headerBg = currentFolder?.color?.let { Color(it).copy(alpha = 0.1f) } ?: Color.Transparent
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(headerBg)
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
+            val headerBg = currentFolder?.color?.let { Color(it).copy(alpha = 0.5f) } ?: MaterialTheme.colorScheme.surface
+            com.example.ui.theme.GlassSurface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.ui.graphics.RectangleShape,
+                color = headerBg,
+                alpha = 0.75f
             ) {
-                if (currentFolder != null) {
-                    IconButton(
-                        onClick = onNavigateUp,
-                        modifier = Modifier
-                            .padding(end = 16.dp)
-                            .size(44.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
-                    ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                Text(
-                    text = currentFolder?.name ?: "NoteMax",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = currentFolder?.color?.let { Color(it) } ?: MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                if (currentFolder == null) {
-                    IconButton(
-                        onClick = onNavigateToSettings,
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .size(44.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Global Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    IconButton(
-                        onClick = { showFolderSettingsDialog = true },
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .size(44.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Folder Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                
-                Box {
-                    IconButton(
-                        onClick = { showViewModeMenu = true },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
-                    ) {
-                        val icon = when(viewMode) {
-                            ViewMode.LIST -> Icons.Default.ViewList
-                            ViewMode.GRID -> Icons.Default.GridView
-                            ViewMode.TABLE -> Icons.Default.TableRows
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (currentFolder != null) {
+                        IconButton(
+                            onClick = onNavigateUp,
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Icon(icon, contentDescription = "Change View Mode", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    DropdownMenu(
-                        expanded = showViewModeMenu,
-                        onDismissRequest = { showViewModeMenu = false },
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("List View") },
-                            onClick = { viewModel.setViewMode(ViewMode.LIST); showViewModeMenu = false },
-                            leadingIcon = { Icon(Icons.Default.ViewList, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Grid View") },
-                            onClick = { viewModel.setViewMode(ViewMode.GRID); showViewModeMenu = false },
-                            leadingIcon = { Icon(Icons.Default.GridView, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Table View") },
-                            onClick = { viewModel.setViewMode(ViewMode.TABLE); showViewModeMenu = false },
-                            leadingIcon = { Icon(Icons.Default.TableRows, contentDescription = null) }
-                        )
+                    Text(
+                        text = currentFolder?.name ?: "NoteMax",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = currentFolder?.color?.let { Color(it).let { if (it.luminance() > 0.5f) Color.Black else Color.White } } ?: MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    if (currentFolder == null) {
+                        IconButton(
+                            onClick = onNavigateToSettings,
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), RoundedCornerShape(14.dp))
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "Global Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { showFolderSettingsDialog = true },
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), RoundedCornerShape(14.dp))
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "Folder Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    
+                    Box {
+                        IconButton(
+                            onClick = { showViewModeMenu = true },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.5f), RoundedCornerShape(14.dp))
+                        ) {
+                            val icon = when(viewMode) {
+                                ViewMode.LIST -> Icons.AutoMirrored.Filled.ViewList
+                                ViewMode.GRID -> Icons.Default.GridView
+                                ViewMode.TABLE -> Icons.Default.TableRows
+                            }
+                            Icon(icon, contentDescription = "Change View Mode", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        DropdownMenu(
+                            expanded = showViewModeMenu,
+                            onDismissRequest = { showViewModeMenu = false },
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("List View") },
+                                onClick = { viewModel.setViewMode(ViewMode.LIST); showViewModeMenu = false },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.ViewList, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Grid View") },
+                                onClick = { viewModel.setViewMode(ViewMode.GRID); showViewModeMenu = false },
+                                leadingIcon = { Icon(Icons.Default.GridView, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Table View") },
+                                onClick = { viewModel.setViewMode(ViewMode.TABLE); showViewModeMenu = false },
+                                leadingIcon = { Icon(Icons.Default.TableRows, contentDescription = null) }
+                            )
+                        }
                     }
                 }
             }
@@ -520,25 +529,27 @@ fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<I
 
 @Composable
 fun ImageListRow(image: ImageEntity, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable { onClick() }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    com.example.ui.theme.GlassSurface(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        alpha = 0.5f
     ) {
-        AsyncImage(
-            model = image.uri,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)),
-            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            Text("Image", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(formatShortDate(image.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = image.uri,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text("Image", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(formatShortDate(image.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -567,45 +578,59 @@ fun EmptyState() {
 fun FolderListRow(folderItem: FolderItem, onClick: () -> Unit, onDelete: () -> Unit) {
     val fColor = folderItem.folder.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val icon = FolderIcons.getIcon(folderItem.folder.iconName)
-    Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)).clickable(onClick = onClick).border(1.dp, fColor.copy(alpha = 0.2f), RoundedCornerShape(20.dp)).padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    com.example.ui.theme.GlassSurface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        alpha = 0.6f
     ) {
-        Box(modifier = Modifier.size(48.dp).background(fColor.copy(alpha = 0.15f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = fColor)
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor)
-                if (folderItem.folder.isLocked) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(Icons.Outlined.Lock, contentDescription = "Locked", tint = fColor, modifier = Modifier.size(16.dp))
-                }
+        Row(
+            modifier = Modifier.fillMaxWidth().border(1.dp, fColor.copy(alpha = 0.2f), RoundedCornerShape(20.dp)).padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.size(48.dp).background(fColor.copy(alpha = 0.15f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = fColor)
             }
-            Text("${folderItem.totalChildren} items", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor)
+                    if (folderItem.folder.isLocked) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Outlined.Lock, contentDescription = "Locked", tint = fColor, modifier = Modifier.size(16.dp))
+                    }
+                }
+                Text("${folderItem.totalChildren} items", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
 
 @Composable
 fun NoteListRow(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surface).border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp)).clickable(onClick = onClick).padding(16.dp),
+    com.example.ui.theme.GlassSurface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        alpha = 0.9f
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary)
+        Column(
+            modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp)).padding(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary)
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Modified ${formatShortDate(note.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text("Modified ${formatShortDate(note.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (showCompact && note.previewText.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(note.previewText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-        }
-        if (showCompact && note.previewText.isNotBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(note.previewText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -614,36 +639,50 @@ fun NoteListRow(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit, onD
 fun FolderGridCard(folderItem: FolderItem, onClick: () -> Unit, onDelete: () -> Unit) {
     val fColor = folderItem.folder.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val icon = FolderIcons.getIcon(folderItem.folder.iconName)
-    Column(
-        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)).border(1.dp, fColor.copy(alpha = 0.2f), RoundedCornerShape(24.dp)).clickable(onClick = onClick).padding(16.dp)
+    com.example.ui.theme.GlassSurface(
+        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        alpha = 0.6f
     ) {
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Box(modifier = Modifier.size(48.dp).background(fColor.copy(alpha = 0.15f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = fColor)
+        Column(
+            modifier = Modifier.fillMaxWidth().border(1.dp, fColor.copy(alpha = 0.2f), RoundedCornerShape(24.dp)).padding(16.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.size(48.dp).background(fColor.copy(alpha = 0.15f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = fColor)
+                }
+                if (folderItem.folder.isLocked) {
+                    Icon(Icons.Outlined.Lock, contentDescription = "Locked", tint = fColor, modifier = Modifier.size(20.dp))
+                }
             }
-            if (folderItem.folder.isLocked) {
-                Icon(Icons.Outlined.Lock, contentDescription = "Locked", tint = fColor, modifier = Modifier.size(20.dp))
-            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${folderItem.totalChildren} items", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Spacer(modifier = Modifier.weight(1f))
-        Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("${folderItem.totalChildren} items", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 fun NoteGridCard(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surface).border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp)).clickable(onClick = onClick).padding(16.dp)
+    com.example.ui.theme.GlassSurface(
+        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        alpha = 0.9f
     ) {
-        Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary)
+        Column(
+            modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp)).padding(16.dp)
+        ) {
+            Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary)
+            }
+            if (showCompact && note.previewText.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(note.previewText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (showCompact && note.previewText.isNotBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(note.previewText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
