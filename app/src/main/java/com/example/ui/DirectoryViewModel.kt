@@ -64,9 +64,9 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
         }
     }
 
-    fun updateFolderSettings(color: Long?, iconName: String?, defaultViewModeString: String?, showCompactPreviews: Boolean) {
+    fun updateFolderSettings(color: Long?, iconName: String?, defaultViewModeString: String?, showCompactPreviews: Boolean, onSuccess: () -> Unit = {}) {
         val folder = currentFolder.value ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 repository.updateFolder(
                     folder.copy(
@@ -77,8 +77,13 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
                         updatedAt = System.currentTimeMillis()
                     )
                 )
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    onSuccess()
+                }
             } catch(e: Exception) {
-                _error.value = "Error saving folder settings"
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    _error.value = "Error saving folder settings"
+                }
             }
         }
     }

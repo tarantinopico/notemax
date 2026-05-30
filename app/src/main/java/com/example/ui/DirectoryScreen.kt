@@ -257,7 +257,7 @@ fun DirectoryScreen(
         FolderSettingsSheet(
             folder = currentFolder!!,
             onDismiss = { showFolderSettingsDialog = false },
-            onSave = { c, i, v, p -> viewModel.updateFolderSettings(c, i, v, p) }
+            onSave = { c, i, v, p, onSuccess -> viewModel.updateFolderSettings(c, i, v, p, onSuccess) }
         )
     }
 }

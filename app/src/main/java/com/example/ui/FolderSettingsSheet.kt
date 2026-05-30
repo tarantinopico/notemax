@@ -4,9 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,22 +48,23 @@ val predefinedColors = listOf(
 fun FolderSettingsSheet(
     folder: FolderEntity,
     onDismiss: () -> Unit,
-    onSave: (color: Long?, iconName: String?, viewMode: String?, compactPreviews: Boolean) -> Unit
+    onSave: (color: Long?, iconName: String?, viewMode: String?, compactPreviews: Boolean, onSuccess: () -> Unit) -> Unit
 ) {
     var selectedColor by remember { mutableStateOf(folder.color) }
     var selectedIcon by remember { mutableStateOf(folder.iconName) }
     var selectedViewMode by remember { mutableStateOf(folder.defaultViewModeString) }
     var showCompactPreviews by remember { mutableStateOf(folder.showCompactPreviews) }
+    var isSaving by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() },
-        modifier = Modifier.fillMaxHeight(0.9f)
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(horizontal = 24.dp)
         ) {
             Text(
@@ -75,87 +75,131 @@ fun FolderSettingsSheet(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            Text("Color", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(48.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(bottom = 32.dp).heightIn(max = 200.dp)
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
             ) {
-                items(predefinedColors) { colorLong ->
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(colorLong?.let { Color(it) } ?: MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { selectedColor = colorLong }
-                            .border(
-                                width = if (selectedColor == colorLong) 3.dp else 0.dp,
-                                color = if (selectedColor == colorLong) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (colorLong == null) {
-                            Icon(Icons.Default.Clear, contentDescription = "Default color", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        } else if (selectedColor == colorLong) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                Text("Color", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
+                
+                // Colors Grid
+                val colorColumns = 6
+                val colorRows = (predefinedColors.size + colorColumns - 1) / colorColumns
+                Column(modifier = Modifier.padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    for (row in 0 until colorRows) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            for (col in 0 until colorColumns) {
+                                val idx = row * colorColumns + col
+                                if (idx < predefinedColors.size) {
+                                    val colorLong = predefinedColors[idx]
+                                    val isSelected = selectedColor == colorLong
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(colorLong?.let { Color(it) } ?: MaterialTheme.colorScheme.surfaceVariant)
+                                            .clickable { selectedColor = colorLong }
+                                            .border(
+                                                width = if (isSelected) 3.dp else 0.dp,
+                                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (colorLong == null) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Default color", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        } else if (isSelected) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
+                                        }
+                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.size(44.dp))
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            Text("Icon", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(56.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(bottom = 32.dp).heightIn(max = 200.dp)
-            ) {
-                items(FolderIcons.icons.keys.toList()) { iconName ->
-                    val isSelected = selectedIcon == iconName || (selectedIcon == null && iconName == "folder")
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { selectedIcon = if (iconName == "folder") null else iconName },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            FolderIcons.getIcon(iconName),
-                            contentDescription = iconName,
-                            tint = if (isSelected) (selectedColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primary) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                Text("Icon", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
+                
+                // Icons Grid
+                val icons = FolderIcons.icons.keys.toList()
+                val iconColumns = 5
+                val iconRows = (icons.size + iconColumns - 1) / iconColumns
+                Column(modifier = Modifier.padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    for (row in 0 until iconRows) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            for (col in 0 until iconColumns) {
+                                val idx = row * iconColumns + col
+                                if (idx < icons.size) {
+                                    val iconName = icons[idx]
+                                    val isSelected = selectedIcon == iconName || (selectedIcon == null && iconName == "folder")
+                                    val iconBg = if (isSelected) (selectedColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primaryContainer) else MaterialTheme.colorScheme.surfaceVariant
+                                    val iconTint = if (isSelected) (selectedColor?.let { Color.White } ?: MaterialTheme.colorScheme.onPrimaryContainer) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    Box(
+                                        modifier = Modifier
+                                            .size(52.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(iconBg)
+                                            .clickable { selectedIcon = if (iconName == "folder") null else iconName }
+                                            .border(
+                                                width = if (isSelected) 2.dp else 0.dp,
+                                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                                shape = RoundedCornerShape(16.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            FolderIcons.getIcon(iconName),
+                                            contentDescription = iconName,
+                                            tint = iconTint
+                                        )
+                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.size(52.dp))
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Compact Previews", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("Show snippet of notes in folder", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Compact Previews", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Show snippet of notes in folder", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = showCompactPreviews, onCheckedChange = { showCompactPreviews = it })
                 }
-                Switch(checked = showCompactPreviews, onCheckedChange = { showCompactPreviews = it })
-            }
 
-            Text("Default View Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
-            SegmentedViewModePicker(selectedViewMode = selectedViewMode) { mode ->
-                selectedViewMode = mode
+                Text("Default View Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
+                SegmentedViewModePicker(selectedViewMode = selectedViewMode) { mode ->
+                    selectedViewMode = mode
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
             }
             
-            Spacer(modifier = Modifier.weight(1f))
-
+            // Bottom Save Button
             Button(
                 onClick = {
-                    onSave(selectedColor, selectedIcon, selectedViewMode, showCompactPreviews)
-                    onDismiss()
+                    isSaving = true
+                    onSave(selectedColor, selectedIcon, selectedViewMode, showCompactPreviews) {
+                        isSaving = false
+                        onDismiss()
+                    }
                 },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp, top = 8.dp),
                 shape = RoundedCornerShape(16.dp),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
+                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
+                enabled = !isSaving
             ) {
-                Text("Save Changes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("Apply Changes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
