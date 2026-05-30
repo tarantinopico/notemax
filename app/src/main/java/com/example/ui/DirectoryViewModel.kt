@@ -6,6 +6,8 @@ import com.example.data.NoteMaxRepository
 import com.example.data.entities.FolderEntity
 import com.example.data.entities.ImageEntity
 import com.example.data.entities.NoteEntity
+import com.example.data.entities.FolderItem
+import com.example.data.entities.TableEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,6 +18,13 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+data class FolderContentState(
+    val folders: List<FolderItem> = emptyList(),
+    val notes: List<NoteEntity> = emptyList(),
+    val images: List<ImageEntity> = emptyList(),
+    val tables: List<TableEntity> = emptyList()
+)
+
 class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel() {
     private val _currentFolderId = MutableStateFlow<Long?>(null)
     val currentFolderId: StateFlow<Long?> = _currentFolderId
@@ -25,6 +34,7 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
     
+    fun dismissError() { _error.value = null }
     fun clearError() { _error.value = null }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -39,24 +49,14 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ViewMode.LIST)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val folders = _currentFolderId.flatMapLatest { parentId ->
-        repository.getFoldersWithCounts(parentId)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val notes = _currentFolderId.flatMapLatest { parentId ->
-        repository.getNotes(parentId)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val tables = _currentFolderId.flatMapLatest { parentId ->
-        repository.getTables(parentId)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val images = _currentFolderId.flatMapLatest { parentId ->
-        repository.getImages(parentId)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val folderContent = combine(
+        _currentFolderId.flatMapLatest { repository.getFoldersWithCounts(it) },
+        _currentFolderId.flatMapLatest { repository.getNotes(it) },
+        _currentFolderId.flatMapLatest { repository.getImages(it) },
+        _currentFolderId.flatMapLatest { repository.getTables(it) }
+    ) { f, n, i, t ->
+        FolderContentState(folders = f, notes = n, images = i, tables = t)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FolderContentState())
 
     fun navigateToFolder(folderId: Long?) {
         _currentFolderId.value = folderId
@@ -142,22 +142,25 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
         }
     }
 
-    fun createNote(title: String, content: String = "") {
+    fun createNote(title: String, onNavigate: (Long) -> Unit) {
         if (title.isBlank()) return
         viewModelScope.launch {
             try {
                 val now = System.currentTimeMillis()
-                repository.insertNote(
-                    NoteEntity(title = title, content = content, previewText = StringUtils.extractPreviewText(content), parentFolderId = _currentFolderId.value, createdAt = now, updatedAt = now)
+                val id = repository.insertNote(
+                    NoteEntity(title = title, content = "", previewText = "", parentFolderId = _currentFolderId.value, createdAt = now, updatedAt = now)
                 )
                 updateParentFolderTimestamp()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    onNavigate(id)
+                }
             } catch(e: Exception) { _error.value = "Error creating note: ${e.localizedMessage}" }
         }
     }
 
     fun createTable(title: String) {
         if (title.isBlank()) return
-        val parentId = _currentFolderId.value ?: return
+        val parentId = _currentFolderId.value
         viewModelScope.launch {
             try {
                 val now = System.currentTimeMillis()

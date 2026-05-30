@@ -62,10 +62,15 @@ abstract class NoteMaxDatabase : RoomDatabase() {
 
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE TABLE IF NOT EXISTS `tables` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `folderId` INTEGER NOT NULL, `title` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, FOREIGN KEY(`folderId`) REFERENCES `folders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `tables` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `folderId` INTEGER, `title` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, FOREIGN KEY(`folderId`) REFERENCES `folders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
                 db.execSQL("CREATE TABLE IF NOT EXISTS `table_columns` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tableId` INTEGER NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `displayOrder` INTEGER NOT NULL, FOREIGN KEY(`tableId`) REFERENCES `tables`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
                 db.execSQL("CREATE TABLE IF NOT EXISTS `table_rows` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tableId` INTEGER NOT NULL, `displayOrder` INTEGER NOT NULL, FOREIGN KEY(`tableId`) REFERENCES `tables`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
                 db.execSQL("CREATE TABLE IF NOT EXISTS `table_cells` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rowId` INTEGER NOT NULL, `columnId` INTEGER NOT NULL, `value` TEXT NOT NULL, FOREIGN KEY(`rowId`) REFERENCES `table_rows`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`columnId`) REFERENCES `table_columns`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tables_folderId` ON `tables` (`folderId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_table_columns_tableId` ON `table_columns` (`tableId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_table_rows_tableId` ON `table_rows` (`tableId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_table_cells_rowId` ON `table_cells` (`rowId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_table_cells_columnId` ON `table_cells` (`columnId`)")
             }
         }
 

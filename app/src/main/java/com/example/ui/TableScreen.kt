@@ -25,13 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.entities.CellEntity
-import com.example.data.entities.ColumnEntity
 import com.example.data.entities.ColumnType
-import com.example.data.entities.RowEntity
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +41,8 @@ fun TableScreen(
     }
 
     val fullTable by viewModel.fullTable.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    
     val table = fullTable?.table
     val columns = fullTable?.columns?.sortedBy { it.displayOrder } ?: emptyList()
     val rows = fullTable?.rows?.map { it.row }?.sortedBy { it.displayOrder } ?: emptyList()
@@ -54,6 +51,15 @@ fun TableScreen(
     val gridStyle by settingsManager.tableGridStyle.collectAsStateWithLifecycle(com.example.data.TableGridStyle.SUBTLE_LINES)
 
     var showAddColumnDialog by remember { mutableStateOf(false) }
+    
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.dismissError()
+        }
+    }
 
     if (table == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -63,6 +69,7 @@ fun TableScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -87,9 +94,6 @@ fun TableScreen(
                                 }
                             }
                         )
-                        LaunchedEffect(Unit) {
-                            // save on unfocus or similar, for now just simple
-                        }
                         DisposableEffect(Unit) {
                             onDispose {
                                 if (titleText != table.title) viewModel.updateTableTitle(titleText)
@@ -119,59 +123,65 @@ fun TableScreen(
         ) {
             val horizontalScrollState = rememberScrollState()
 
+            // Calculate exact width needed to prevent infinite constraint crashes
+            val tableWidth = columns.sumOf { if (it.type == ColumnType.LONG_TEXT) 300 else 150 } + 100
+
             Column(modifier = Modifier.fillMaxSize()) {
-                // Table implementation using LazyColumn for rows, and horizontal scroll for columns
-                Box(modifier = Modifier.weight(1f).horizontalScroll(horizontalScrollState)) {
+                Box(modifier = Modifier.weight(1f)) {
                     LazyColumn(
-                        modifier = Modifier.fillMaxHeight(),
-                        contentPadding = PaddingValues(bottom = 100.dp, start = 16.dp, end = 16.dp, top = 16.dp)
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .horizontalScroll(horizontalScrollState) // Outer scroll container sets bounded width inside it
+                            .padding(horizontal = 16.dp),
+                        contentPadding = PaddingValues(bottom = 100.dp, top = 16.dp)
                     ) {
-                    // Header Row
-                    item {
-                        TableRowContainer(style = gridStyle, isHeader = true) {
-                            columns.forEach { column ->
-                                val cellWidth = if (column.type == ColumnType.LONG_TEXT) 300.dp else 150.dp
-                                Box(
-                                    modifier = Modifier
-                                        .width(cellWidth)
-                                        .padding(8.dp),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    Text(
-                                        text = column.name,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                        // Header Row
+                        item {
+                            TableRowContainer(style = gridStyle, isHeader = true, width = tableWidth.dp) {
+                                columns.forEach { column ->
+                                    val cellWidth = if (column.type == ColumnType.LONG_TEXT) 300.dp else 150.dp
+                                    Box(
+                                        modifier = Modifier
+                                            .width(cellWidth)
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.CenterStart
+                                    ) {
+                                        Text(
+                                            text = column.name,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Box(modifier = Modifier.width(100.dp).padding(8.dp)) {
+                                    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+                                    val hapticIntensity by settingsManager.hapticIntensity.collectAsStateWithLifecycle(com.example.data.HapticIntensity.LIGHT)
+                                    TextButton(
+                                        onClick = { 
+                                            if (hapticIntensity != com.example.data.HapticIntensity.OFF) {
+                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                            }
+                                            showAddColumnDialog = true 
+                                        },
+                                        contentPadding = PaddingValues(0.dp)
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = "Add Column", modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Column")
+                                    }
                                 }
                             }
-                            Box(modifier = Modifier.width(100.dp).padding(8.dp)) {
-                                val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-                                val hapticIntensity by settingsManager.hapticIntensity.collectAsStateWithLifecycle(com.example.data.HapticIntensity.LIGHT)
-                                TextButton(
-                                    onClick = { 
-                                        if (hapticIntensity != com.example.data.HapticIntensity.OFF) {
-                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        }
-                                        showAddColumnDialog = true 
-                                    },
-                                    contentPadding = PaddingValues(0.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Add Column", modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Column")
-                                }
-                            }
+                            Spacer(Modifier.height(8.dp))
                         }
-                        Spacer(Modifier.height(8.dp))
-                    }
 
                         // Data Rows
                         items(items = rows, key = { it.id }) { row ->
                             SwipeToDismissRow(
+                                width = tableWidth.dp,
                                 onDismiss = { viewModel.deleteRow(row) }
                             ) {
-                                TableRowContainer(style = gridStyle, isHeader = false) {
+                                TableRowContainer(style = gridStyle, isHeader = false, width = tableWidth.dp) {
                                     columns.forEach { column ->
                                         val cellWidth = if (column.type == ColumnType.LONG_TEXT) 300.dp else 150.dp
                                         val cell = cells.find { it.rowId == row.id && it.columnId == column.id }
@@ -192,7 +202,6 @@ fun TableScreen(
                                             )
                                         }
                                     }
-                                    // Empty space for the "Add Column" alignment
                                     Spacer(modifier = Modifier.width(100.dp))
                                 }
                             }
@@ -237,6 +246,7 @@ fun TableScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeToDismissRow(
+    width: androidx.compose.ui.unit.Dp,
     onDismiss: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -253,6 +263,7 @@ fun SwipeToDismissRow(
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
+        modifier = Modifier.width(width),
         backgroundContent = {
             val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
                 MaterialTheme.colorScheme.errorContainer
@@ -282,6 +293,7 @@ fun SwipeToDismissRow(
 fun TableRowContainer(
     style: com.example.data.TableGridStyle,
     isHeader: Boolean,
+    width: androidx.compose.ui.unit.Dp,
     content: @Composable RowScope.() -> Unit
 ) {
     val backgroundColor = if (isHeader) MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.3f) 
@@ -297,7 +309,7 @@ fun TableRowContainer(
         color = backgroundColor,
         shape = shape,
         border = border,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.width(width)
     ) {
         Row(
             modifier = Modifier.padding(vertical = 8.dp),
@@ -315,13 +327,17 @@ fun EditableCell(
     onValueChange: (String) -> Unit
 ) {
     var isEditing by remember { mutableStateOf(false) }
+    var localValue by remember(value, isEditing) { mutableStateOf(value) }
     
     if (isEditing) {
         when (columnType) {
             ColumnType.LONG_TEXT -> {
                 BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
+                    value = localValue,
+                    onValueChange = { 
+                        localValue = it
+                        onValueChange(it) 
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
@@ -334,9 +350,10 @@ fun EditableCell(
             }
             ColumnType.NUMBER -> {
                 BasicTextField(
-                    value = value,
+                    value = localValue,
                     onValueChange = { newValue ->
                         if (newValue.isEmpty() || newValue.matches(Regex("^-?\\d*\\.?\\d*$"))) {
+                            localValue = newValue
                             onValueChange(newValue)
                         }
                     },
@@ -355,7 +372,7 @@ fun EditableCell(
                 var expanded by remember { mutableStateOf(true) }
                 Box {
                     Text(
-                        text = if (value.isEmpty()) "Select..." else value,
+                        text = if (localValue.isEmpty()) "Select..." else localValue,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -373,6 +390,7 @@ fun EditableCell(
                             DropdownMenuItem(
                                 text = { Text(option) },
                                 onClick = {
+                                    localValue = option
                                     onValueChange(option)
                                     expanded = false
                                     isEditing = false
@@ -384,8 +402,11 @@ fun EditableCell(
             }
             else -> {
                 BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
+                    value = localValue,
+                    onValueChange = {
+                        localValue = it
+                        onValueChange(it)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
