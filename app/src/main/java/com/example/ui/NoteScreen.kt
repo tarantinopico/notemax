@@ -299,14 +299,14 @@ fun NoteScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
                     onClick = handleBack,
                     modifier = Modifier
-                        .padding(end = 12.dp)
-                        .size(40.dp)
+                        .padding(end = 16.dp)
+                        .size(44.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
                 ) {
                     Icon(
@@ -356,7 +356,7 @@ fun NoteScreen(
                     .fillMaxWidth()
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 if (isEditing) {
                     BasicTextField(
@@ -386,9 +386,9 @@ fun NoteScreen(
                     
                     Text(
                         "Created ${formatShortDate(note!!.createdAt)} • Edited ${formatShortDate(note!!.updatedAt)}", 
-                        style = MaterialTheme.typography.bodySmall, 
+                        style = MaterialTheme.typography.bodyMedium, 
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.padding(bottom = 24.dp)
                     )
                 }
 
@@ -399,10 +399,10 @@ fun NoteScreen(
                         verticalAlignment = Alignment.CenterVertically, 
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .padding(bottom = 24.dp)
+                            .clip(RoundedCornerShape(16.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(12.dp)
+                            .padding(16.dp)
                     ) {
                         Box(
                             modifier = Modifier
