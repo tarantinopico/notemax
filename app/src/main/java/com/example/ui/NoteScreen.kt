@@ -1,6 +1,5 @@
 package com.example.ui
 
-import com.example.ui.theme.toHex
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -130,7 +129,6 @@ fun NoteScreen(
     }
 
     var showDiscardDialog by remember { mutableStateOf(false) }
-    var showTagDialog by remember { mutableStateOf(false) }
 
     val handleBack: () -> Unit = {
         if (isEditing) {
@@ -193,12 +191,12 @@ fun NoteScreen(
                         val surfaceAlpha = if (effects.uiTransparency) 0.65f else 0.85f
                         val glassmorphicMod = if (effects.glassmorphism) Modifier.blur(16.dp) else Modifier
                         
-                        var activeCategory by remember { mutableStateOf(ToolbarCategory.STYLE) }
+                        var activeCategory by remember { mutableStateOf(ToolbarCategory.TEXT) }
                         
                         LaunchedEffect(activeCategory) {
-                            if (activeCategory == ToolbarCategory.CANVAS) {
+                            if (activeCategory == ToolbarCategory.DRAW) {
                                 isSketchMode = true
-                            } else if (activeCategory != ToolbarCategory.CANVAS && isSketchMode) {
+                            } else if (activeCategory != ToolbarCategory.DRAW && isSketchMode) {
                                 isSketchMode = false
                             }
                         }
@@ -214,7 +212,7 @@ fun NoteScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     when (category) {
-                                        ToolbarCategory.STYLE -> {
+                                        ToolbarCategory.TEXT -> {
                                             IconButton(onClick = { 
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 historyManager.undo()?.let { textState = it } 
@@ -244,7 +242,7 @@ fun NoteScreen(
                                             HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
                                             IconButton(onClick = { filePickerLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.AttachFile, "Attach File", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                                         }
-                                        ToolbarCategory.CANVAS -> {
+                                        ToolbarCategory.DRAW -> {
                                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                                 ToolButton("Pen", ToolType.PEN == activeTool) { 
                                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); activeTool = ToolType.PEN 
@@ -269,7 +267,7 @@ fun NoteScreen(
                                                 }
                                             }
                                         }
-                                        ToolbarCategory.STRUCTURE -> {
+                                        ToolbarCategory.DATA -> {
                                             ToolbarButton(text = "Table", onClick = { insertFormatting("\n| Header | Header |\n| --- | --- |\n| Cell | Cell |\n", "") })
                                             ToolbarButton(text = "Big Arrow", onClick = { insertFormatting("==>", "") })
                                             ToolbarButton(text = "Check Box", onClick = { insertFormatting("[ ] ", "") })
@@ -279,10 +277,10 @@ fun NoteScreen(
                             }
                             HorizontalDivider(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
                             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                CategoryTab("Style", ToolbarCategory.STYLE, activeCategory) { activeCategory = it }
+                                CategoryTab("Text", ToolbarCategory.TEXT, activeCategory) { activeCategory = it }
                                 CategoryTab("Insert", ToolbarCategory.INSERT, activeCategory) { activeCategory = it }
-                                CategoryTab("Canvas", ToolbarCategory.CANVAS, activeCategory) { activeCategory = it }
-                                CategoryTab("Structure", ToolbarCategory.STRUCTURE, activeCategory) { activeCategory = it }
+                                CategoryTab("Draw", ToolbarCategory.DRAW, activeCategory) { activeCategory = it }
+                                CategoryTab("Data", ToolbarCategory.DATA, activeCategory) { activeCategory = it }
                             }
                         }
                     }
@@ -549,53 +547,6 @@ fun NoteScreen(
         )
     }
 
-    if (showTagDialog) {
-        var tagText by remember { mutableStateOf("") }
-        var selectedBgColor by remember { mutableStateOf(Color(0xFF4CAF50)) }
-        var selectedFgColor by remember { mutableStateOf(Color.White) }
-        val colors = listOf(Color(0xFF4CAF50), Color(0xFF2196F3), Color(0xFFF44336), Color(0xFFFF9800), Color(0xFF9C27B0))
-        
-        AlertDialog(
-            onDismissRequest = { showTagDialog = false },
-            title = { Text("Create Custom Tag") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = tagText,
-                        onValueChange = { tagText = it },
-                        label = { Text("Tag Content") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text("Tag Color", style = MaterialTheme.typography.labelLarge)
-                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        colors.forEach { c ->
-                            Box(modifier = Modifier.size(36.dp).clip(androidx.compose.foundation.shape.CircleShape).background(c).clickable {
-                                selectedBgColor = c
-                            }, contentAlignment = Alignment.Center) {
-                                if (selectedBgColor == c) Icon(Icons.Default.Check, null, tint = Color.White)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (tagText.isNotBlank()) {
-                        val hexBg = selectedBgColor.toHex()
-                        val hexFg = selectedFgColor.toHex()
-                        insertFormatting("$\$TAG_BEGIN$\$color:$hexBg,textColor:$hexFg,text:$tagText$\$TAG_END$\$", "")
-                    }
-                    showTagDialog = false
-                }) { Text("Insert Tag") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTagDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
@@ -615,7 +566,7 @@ fun NoteScreen(
     }
 }
 
-enum class ToolbarCategory { STYLE, INSERT, CANVAS, STRUCTURE }
+enum class ToolbarCategory { TEXT, INSERT, DRAW, DATA }
 
 @Composable
 fun CategoryTab(text: String, category: ToolbarCategory, activeCategory: ToolbarCategory, onSelect: (ToolbarCategory) -> Unit) {

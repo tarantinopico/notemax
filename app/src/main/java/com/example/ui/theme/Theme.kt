@@ -15,57 +15,20 @@ import androidx.core.view.WindowCompat
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.blur
-import androidx.compose.foundation.background
 import com.example.data.InterfaceDensity
 import com.example.data.ThemeMode
 
 data class VisualEffects(val glassmorphism: Boolean, val uiTransparency: Boolean)
 val LocalVisualEffects = staticCompositionLocalOf { VisualEffects(false, false) }
 
-fun Color.toHex(): String {
-    val r = (this.red * 255).toInt()
-    val g = (this.green * 255).toInt()
-    val b = (this.blue * 255).toInt()
-    return String.format("%02X%02X%02X", r, g, b)
-}
-
 @Composable
-fun GlassSurface(
-    modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-    color: Color = MaterialTheme.colorScheme.surface,
-    alpha: Float = 0.65f,
-    contentAlignment: Alignment = Alignment.TopStart,
-    content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit
-) {
+fun Modifier.glassmorphicOverlay(): Modifier {
     val effects = LocalVisualEffects.current
-    androidx.compose.foundation.layout.Box(modifier = modifier, contentAlignment = contentAlignment) {
-        if (effects.glassmorphism) {
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(shape)
-                    .blur(20.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded)
-                    .background(color.copy(alpha = alpha))
-            )
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(shape)
-                    .background(color.copy(alpha = alpha * 0.7f))
-            )
-        } else {
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(shape)
-                    .background(color.copy(alpha = if (effects.uiTransparency) alpha else 1f))
-            )
-        }
-        content()
+    return if (effects.glassmorphism) {
+        this.blur(16.dp)
+    } else {
+        this
     }
 }
 
