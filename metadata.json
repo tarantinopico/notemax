@@ -1,0 +1,6 @@
+{
+  "name": "NoteMax",
+  "description": "Infinite hierarchical note taking app",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

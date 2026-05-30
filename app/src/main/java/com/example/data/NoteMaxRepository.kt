@@ -1,0 +1,44 @@
+package com.example.data
+
+import com.example.data.dao.FolderDao
+import com.example.data.dao.NoteDao
+import com.example.data.entities.FolderEntity
+import com.example.data.entities.NoteEntity
+import kotlinx.coroutines.flow.Flow
+
+class NoteMaxRepository(
+    private val folderDao: FolderDao,
+    private val noteDao: NoteDao
+) {
+    fun getFolders(parentId: Long?): Flow<List<FolderEntity>> {
+        return if (parentId == null) folderDao.getRootFolders() else folderDao.getFoldersInParent(parentId)
+    }
+
+    fun getNotes(parentId: Long?): Flow<List<NoteEntity>> {
+        return if (parentId == null) noteDao.getRootNotes() else noteDao.getNotesInParent(parentId)
+    }
+
+    fun getFolderFlow(id: Long): Flow<FolderEntity?> = folderDao.getFolderByIdFlow(id)
+    suspend fun getFolderById(id: Long): FolderEntity? = folderDao.getFolderById(id)
+
+    suspend fun insertFolder(folder: FolderEntity) {
+        folderDao.insertFolder(folder)
+    }
+
+    suspend fun deleteFolder(folder: FolderEntity) {
+        folderDao.deleteFolder(folder)
+    }
+
+    fun getNoteFlow(id: Long): Flow<NoteEntity?> = noteDao.getNoteByIdFlow(id)
+    suspend fun getNoteById(id: Long): NoteEntity? = noteDao.getNoteById(id)
+
+    suspend fun insertNote(note: NoteEntity): Long = noteDao.insertNote(note)
+
+    suspend fun updateNote(note: NoteEntity) {
+        noteDao.updateNote(note)
+    }
+
+    suspend fun deleteNote(note: NoteEntity) {
+        noteDao.deleteNote(note)
+    }
+}
