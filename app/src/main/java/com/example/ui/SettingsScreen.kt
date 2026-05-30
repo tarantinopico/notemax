@@ -172,38 +172,6 @@ fun SettingsScreen(
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
-
-            // Haptics & Tables
-            val hapticIntensity by settingsManager.hapticIntensity.collectAsState()
-            val tableGridStyle by settingsManager.tableGridStyle.collectAsState()
-            
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = "Haptic Feedback",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                SegmentedPicker(
-                    options = listOf(com.example.data.HapticIntensity.OFF to "Off", com.example.data.HapticIntensity.LIGHT to "Light", com.example.data.HapticIntensity.STRONG to "Strong"),
-                    selectedOption = hapticIntensity,
-                    onOptionSelected = { settingsManager.setHapticIntensity(it) }
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = "Table Grid Style",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                SegmentedPicker(
-                    options = listOf(com.example.data.TableGridStyle.SUBTLE_LINES to "Subtle Lines", com.example.data.TableGridStyle.CARDS to "Cards", com.example.data.TableGridStyle.INVISIBLE to "Invisible"),
-                    selectedOption = tableGridStyle,
-                    onOptionSelected = { settingsManager.setTableGridStyle(it) }
-                )
-            }
         }
     }
 }

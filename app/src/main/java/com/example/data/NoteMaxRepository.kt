@@ -3,23 +3,16 @@ package com.example.data
 import com.example.data.dao.FolderDao
 import com.example.data.dao.NoteDao
 import com.example.data.dao.ImageDao
-import com.example.data.dao.TableDao
 import com.example.data.entities.FolderEntity
 import com.example.data.entities.FolderItem
 import com.example.data.entities.ImageEntity
 import com.example.data.entities.NoteEntity
-import com.example.data.entities.TableEntity
-import com.example.data.entities.ColumnEntity
-import com.example.data.entities.RowEntity
-import com.example.data.entities.CellEntity
-import com.example.data.dao.FullTable
 import kotlinx.coroutines.flow.Flow
 
 class NoteMaxRepository(
     private val folderDao: FolderDao,
     private val noteDao: NoteDao,
-    private val imageDao: ImageDao,
-    private val tableDao: TableDao
+    private val imageDao: ImageDao
 ) {
     fun getFoldersWithCounts(parentId: Long?): Flow<List<FolderItem>> {
         return if (parentId == null) folderDao.getRootFoldersWithCounts() else folderDao.getFoldersInParentWithCounts(parentId)
@@ -32,23 +25,6 @@ class NoteMaxRepository(
     fun getImages(parentId: Long?): Flow<List<ImageEntity>> {
         return if (parentId == null) kotlinx.coroutines.flow.flowOf(emptyList()) else imageDao.getImagesInFolder(parentId)
     }
-
-    fun getTables(parentId: Long?): Flow<List<TableEntity>> {
-        return if (parentId == null) kotlinx.coroutines.flow.flowOf(emptyList()) else tableDao.getTablesInFolder(parentId)
-    }
-
-    fun getFullTableFlow(tableId: Long): Flow<FullTable?> = tableDao.getFullTableFlow(tableId)
-    suspend fun insertTable(table: TableEntity): Long = tableDao.insertTable(table)
-    suspend fun updateTable(table: TableEntity) = tableDao.updateTable(table)
-    suspend fun deleteTable(table: TableEntity) = tableDao.deleteTable(table)
-
-    suspend fun insertColumn(column: ColumnEntity): Long = tableDao.insertColumn(column)
-    suspend fun insertRow(row: RowEntity): Long = tableDao.insertRow(row)
-    suspend fun deleteRow(row: RowEntity) = tableDao.deleteRow(row)
-    
-    suspend fun insertCell(cell: CellEntity): Long = tableDao.insertCell(cell)
-    suspend fun updateCell(cell: CellEntity) = tableDao.updateCell(cell)
-    suspend fun getCell(rowId: Long, columnId: Long): CellEntity? = tableDao.getCell(rowId, columnId)
 
     suspend fun insertImage(image: ImageEntity) = imageDao.insertImage(image)
     suspend fun deleteImageById(id: Long) = imageDao.deleteImageById(id)

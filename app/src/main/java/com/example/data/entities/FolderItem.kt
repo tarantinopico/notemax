@@ -5,8 +5,7 @@ import androidx.room.Embedded
 data class FolderItem(
     @Embedded val folder: FolderEntity,
     val folderCount: Int,
-    val noteCount: Int,
-    val tableCount: Int
+    val noteCount: Int
 ) {
-    val totalChildren: Int get() = folderCount + noteCount + tableCount
+    val totalChildren: Int get() = folderCount + noteCount
 }
