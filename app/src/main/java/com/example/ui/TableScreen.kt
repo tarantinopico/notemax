@@ -124,26 +124,29 @@ fun TableScreen(
             val horizontalScrollState = rememberScrollState()
 
             // Calculate exact width needed to prevent infinite constraint crashes
-            val tableWidth = columns.sumOf { if (it.type == ColumnType.LONG_TEXT) 300 else 150 } + 100
+            val tableWidth = columns.sumOf { if (it.type == ColumnType.LONG_TEXT) 200 else 120 } + 100
 
             Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    val verticalState = rememberLazyListState()
                     LazyColumn(
+                        state = verticalState,
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .horizontalScroll(horizontalScrollState) // Outer scroll container sets bounded width inside it
-                            .padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(bottom = 100.dp, top = 16.dp)
+                            .fillMaxSize()
+                            .horizontalScroll(horizontalScrollState)
+                            .padding(horizontal = 12.dp),
+                        contentPadding = PaddingValues(bottom = 100.dp, top = 8.dp)
                     ) {
                         // Header Row
                         item {
                             TableRowContainer(style = gridStyle, isHeader = true, width = tableWidth.dp) {
                                 columns.forEach { column ->
-                                    val cellWidth = if (column.type == ColumnType.LONG_TEXT) 300.dp else 150.dp
+                                    val cellWidth = if (column.type == ColumnType.LONG_TEXT) 200.dp else 120.dp
                                     Box(
                                         modifier = Modifier
                                             .width(cellWidth)
-                                            .padding(8.dp),
+                                            .height(50.dp)
+                                            .padding(horizontal = 8.dp),
                                         contentAlignment = Alignment.CenterStart
                                     ) {
                                         Text(
@@ -183,13 +186,14 @@ fun TableScreen(
                             ) {
                                 TableRowContainer(style = gridStyle, isHeader = false, width = tableWidth.dp) {
                                     columns.forEach { column ->
-                                        val cellWidth = if (column.type == ColumnType.LONG_TEXT) 300.dp else 150.dp
+                                        val cellWidth = if (column.type == ColumnType.LONG_TEXT) 200.dp else 120.dp
                                         val cell = cells.find { it.rowId == row.id && it.columnId == column.id }
                                         val cellValue = cell?.value ?: ""
 
                                         Box(
                                             modifier = Modifier
                                                 .width(cellWidth)
+                                                .defaultMinSize(minHeight = 50.dp)
                                                 .padding(horizontal = 4.dp, vertical = 2.dp),
                                             contentAlignment = Alignment.CenterStart
                                         ) {

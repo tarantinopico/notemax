@@ -306,9 +306,9 @@ fun ListView(
 ) {
     LazyColumn(
         state = state,
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-        contentPadding = PaddingValues(top = maxHeaderHeight + 16.dp, bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = maxHeaderHeight + 8.dp, bottom = 80.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(content.folders, key = { "folder_${it.folder.id}" }) { folderItem ->
             FolderListRow(folderItem, onClick = { onFolderClick(folderItem.folder) })
@@ -339,10 +339,10 @@ fun GridView(
     LazyVerticalStaggeredGrid(
         state = state,
         columns = StaggeredGridCells.Adaptive(150.dp),
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-        contentPadding = PaddingValues(top = maxHeaderHeight + 16.dp, bottom = 120.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalItemSpacing = 12.dp
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = maxHeaderHeight + 8.dp, bottom = 80.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalItemSpacing = 8.dp
     ) {
         items(content.folders, key = { "folder_${it.folder.id}" }) { folderItem ->
             FolderGridCard(folderItem, onClick = { onFolderClick(folderItem.folder) })
@@ -369,10 +369,10 @@ fun EmptyState(modifier: Modifier = Modifier) {
 fun FolderListRow(folderItem: FolderItem, onClick: () -> Unit) {
     val fColor = folderItem.folder.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val icon = FolderIcons.getIcon(folderItem.folder.iconName)
-    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(48.dp).background(fColor.copy(alpha=0.15f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = fColor) }
-            Spacer(modifier = Modifier.width(16.dp))
+    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(fColor.copy(alpha=0.15f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = fColor, modifier = Modifier.size(20.dp)) }
+            Spacer(modifier = Modifier.width(12.dp))
             Column { Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor) }
         }
     }
@@ -380,10 +380,10 @@ fun FolderListRow(folderItem: FolderItem, onClick: () -> Unit) {
 
 @Composable
 fun TableListRow(table: TableEntity, onClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.8f)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.tertiary.copy(alpha=0.2f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.tertiary) }
-            Spacer(modifier = Modifier.width(16.dp))
+    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.8f)) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.tertiary.copy(alpha=0.2f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp)) }
+            Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(table.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer)
                 Text("Modified ${formatShortDate(table.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha=0.7f))
@@ -394,18 +394,18 @@ fun TableListRow(table: TableEntity, onClick: () -> Unit) {
 
 @Composable
 fun NoteListRow(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
-        Column(modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp)).padding(16.dp)) {
+    Surface(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+        Column(modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)).padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary) }
-                Spacer(modifier = Modifier.width(16.dp))
+                Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp)) }
+                Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text("Modified ${formatShortDate(note.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (showCompact && note.previewText.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(note.previewText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.8f), maxLines=2, overflow=TextOverflow.Ellipsis)
             }
         }
@@ -416,9 +416,9 @@ fun NoteListRow(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit) {
 fun FolderGridCard(folderItem: FolderItem, onClick: () -> Unit) {
     val fColor = folderItem.folder.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
     val icon = FolderIcons.getIcon(folderItem.folder.iconName)
-    Surface(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onClick), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.6f)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Box(modifier = Modifier.size(48.dp).background(fColor.copy(alpha=0.15f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = fColor) }
+    Surface(modifier = Modifier.fillMaxWidth().aspectRatio(1.2f).clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha=0.6f)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Box(modifier = Modifier.size(40.dp).background(fColor.copy(alpha=0.15f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(icon, null, tint = fColor, modifier = Modifier.size(20.dp)) }
             Spacer(modifier = Modifier.weight(1f))
             Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor, maxLines=1, overflow=TextOverflow.Ellipsis)
         }
@@ -427,9 +427,9 @@ fun FolderGridCard(folderItem: FolderItem, onClick: () -> Unit) {
 
 @Composable
 fun TableGridCard(table: TableEntity, onClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onClick), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.8f)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.tertiary.copy(alpha=0.2f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.tertiary) }
+    Surface(modifier = Modifier.fillMaxWidth().aspectRatio(1.2f).clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha=0.8f)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.tertiary.copy(alpha=0.2f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp)) }
             Spacer(modifier = Modifier.weight(1f))
             Text(table.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer, maxLines=1, overflow=TextOverflow.Ellipsis)
         }
@@ -438,11 +438,11 @@ fun TableGridCard(table: TableEntity, onClick: () -> Unit) {
 
 @Composable
 fun NoteGridCard(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onClick), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
-        Column(modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(24.dp)).padding(16.dp)) {
-            Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary) }
+    Surface(modifier = Modifier.fillMaxWidth().aspectRatio(1.2f).clickable(onClick = onClick), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+        Column(modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp)).padding(12.dp)) {
+            Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp)) }
             if (showCompact && note.previewText.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(note.previewText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.8f), maxLines=2, overflow=TextOverflow.Ellipsis)
             }
             Spacer(modifier = Modifier.weight(1f))
