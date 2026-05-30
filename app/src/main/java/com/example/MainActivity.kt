@@ -21,20 +21,63 @@ import com.example.ui.NoteDetailViewModel
 import com.example.ui.NoteScreen
 import com.example.ui.theme.AppTheme
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
+import com.example.ui.SettingsScreen
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            AppTheme {
+            val app = application as NoteMaxApplication
+            val themeMode by app.settingsManager.themeMode.collectAsStateWithLifecycle()
+            val useDynamicColor by app.settingsManager.useDynamicColor.collectAsStateWithLifecycle()
+            val interfaceDensity by app.settingsManager.interfaceDensity.collectAsStateWithLifecycle()
+
+            AppTheme(
+                themeMode = themeMode,
+                useDynamicColor = useDynamicColor,
+                interfaceDensity = interfaceDensity
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val app = application as NoteMaxApplication
                     val navController = rememberNavController()
 
-                    NavHost(navController = navController, startDestination = "directory?folderId={folderId}") {
+                    NavHost(
+                        navController = navController, 
+                        startDestination = "directory?folderId={folderId}",
+                        enterTransition = {
+                            androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                            androidx.compose.animation.slideInHorizontally(
+                                initialOffsetX = { 300 },
+                                animationSpec = androidx.compose.animation.core.tween(300)
+                            )
+                        },
+                        exitTransition = {
+                            androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
+                            androidx.compose.animation.slideOutHorizontally(
+                                targetOffsetX = { -300 },
+                                animationSpec = androidx.compose.animation.core.tween(300)
+                            )
+                        },
+                        popEnterTransition = {
+                            androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                            androidx.compose.animation.slideInHorizontally(
+                                initialOffsetX = { -300 },
+                                animationSpec = androidx.compose.animation.core.tween(300)
+                            )
+                        },
+                        popExitTransition = {
+                            androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) +
+                            androidx.compose.animation.slideOutHorizontally(
+                                targetOffsetX = { 300 },
+                                animationSpec = androidx.compose.animation.core.tween(300)
+                            )
+                        }
+                    ) {
                         composable(
                             route = "directory?folderId={folderId}",
                             arguments = listOf(navArgument("folderId") {
@@ -49,7 +92,6 @@ class MainActivity : ComponentActivity() {
                             val directoryViewModel: DirectoryViewModel = viewModel(
                                 factory = AppViewModelProvider.factory(app.repository)
                             )
-                            // Load the target folder when composable enters
                             androidx.compose.runtime.LaunchedEffect(folderId) {
                                 directoryViewModel.navigateToFolder(folderId)
                             }
@@ -64,13 +106,48 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToNote = { noteId ->
                                     navController.navigate("note/$noteId")
+                                },
+                                onNavigateToSettings = {
+                                    navController.navigate("settings")
                                 }
                             )
                         }
 
                         composable(
                             route = "note/{noteId}",
-                            arguments = listOf(navArgument("noteId") { type = NavType.LongType })
+                            arguments = listOf(navArgument("noteId") { type = NavType.LongType }),
+                            enterTransition = {
+                                androidx.compose.animation.scaleIn(
+                                    initialScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeIn(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            exitTransition = {
+                                androidx.compose.animation.scaleOut(
+                                    targetScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeOut(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            popEnterTransition = {
+                                androidx.compose.animation.scaleIn(
+                                    initialScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeIn(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            popExitTransition = {
+                                androidx.compose.animation.scaleOut(
+                                    targetScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeOut(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            }
                         ) { backStackEntry ->
                             val noteId = backStackEntry.arguments?.getLong("noteId") ?: return@composable
                             val noteViewModel: NoteDetailViewModel = viewModel(
@@ -82,6 +159,13 @@ class MainActivity : ComponentActivity() {
                             
                             NoteScreen(
                                 viewModel = noteViewModel,
+                                onNavigateUp = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable("settings") {
+                            SettingsScreen(
+                                settingsManager = app.settingsManager,
                                 onNavigateUp = { navController.popBackStack() }
                             )
                         }

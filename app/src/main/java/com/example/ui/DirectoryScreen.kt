@@ -35,7 +35,8 @@ fun DirectoryScreen(
     viewModel: DirectoryViewModel,
     onNavigateToFolder: (Long) -> Unit,
     onNavigateUp: () -> Unit,
-    onNavigateToNote: (Long) -> Unit
+    onNavigateToNote: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val currentFolder by viewModel.currentFolder.collectAsStateWithLifecycle()
     val folders by viewModel.folders.collectAsStateWithLifecycle()
@@ -103,6 +104,12 @@ fun DirectoryScreen(
                     ) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                } else {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_launcher_foreground),
+                        contentDescription = "NoteMax Logo",
+                        modifier = Modifier.padding(end = 12.dp).size(40.dp)
+                    )
                 }
                 
                 Text(
@@ -113,7 +120,17 @@ fun DirectoryScreen(
                     modifier = Modifier.weight(1f)
                 )
                 
-                if (currentFolder != null) {
+                if (currentFolder == null) {
+                    IconButton(
+                        onClick = onNavigateToSettings,
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .size(44.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Global Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
                     IconButton(
                         onClick = { showFolderSettingsDialog = true },
                         modifier = Modifier
@@ -269,11 +286,24 @@ fun EmptyState() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.surfaceVariant)
-        Spacer(modifier = Modifier.height(24.dp))
-        Text("This folder is empty", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_launcher_foreground),
+            contentDescription = null,
+            modifier = Modifier.size(112.dp)
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            text = "Welcome to NoteMax", 
+            style = MaterialTheme.typography.titleLarge, 
+            fontWeight = FontWeight.Bold, 
+            color = MaterialTheme.colorScheme.onBackground
+        )
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Create a folder or note to get started.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = "Create a folder or note to get started.", 
+            style = MaterialTheme.typography.bodyLarge, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

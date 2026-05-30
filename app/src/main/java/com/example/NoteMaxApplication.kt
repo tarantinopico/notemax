@@ -9,4 +9,7 @@ class NoteMaxApplication : Application() {
     val repository by lazy { 
         NoteMaxRepository(database.folderDao(), database.noteDao()) 
     }
+    val settingsManager by lazy {
+        com.example.data.SettingsManager(this)
+    }
 }

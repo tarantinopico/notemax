@@ -136,9 +136,9 @@ fun NoteScreen(
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                    tonalElevation = 2.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    tonalElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(

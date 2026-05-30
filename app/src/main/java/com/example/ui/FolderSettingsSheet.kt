@@ -60,6 +60,7 @@ fun FolderSettingsSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() },
+        shape = MaterialTheme.shapes.extraLarge,
         modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Column(
