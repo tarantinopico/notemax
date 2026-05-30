@@ -19,14 +19,14 @@ import com.example.ui.DirectoryScreen
 import com.example.ui.DirectoryViewModel
 import com.example.ui.NoteDetailViewModel
 import com.example.ui.NoteScreen
-import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            AppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
