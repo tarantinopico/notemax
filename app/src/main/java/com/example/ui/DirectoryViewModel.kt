@@ -16,11 +16,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel() {
-
     private val _currentFolderId = MutableStateFlow<Long?>(null)
     val currentFolderId: StateFlow<Long?> = _currentFolderId
     
     private val _globalViewMode = MutableStateFlow(ViewMode.LIST)
+    
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+    
+    fun clearError() { _error.value = null }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val currentFolder = _currentFolderId.flatMapLatest { id ->
@@ -46,12 +50,14 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
     fun navigateToFolder(folderId: Long?) {
         _currentFolderId.value = folderId
     }
-    
+
     fun setViewMode(mode: ViewMode) {
         val folder = currentFolder.value
         if (folder?.defaultViewModeString != null) {
             viewModelScope.launch {
-                repository.updateFolder(folder.copy(defaultViewModeString = mode.name, updatedAt = System.currentTimeMillis()))
+                try {
+                    repository.updateFolder(folder.copy(defaultViewModeString = mode.name, updatedAt = System.currentTimeMillis()))
+                } catch(e: Exception) { _error.value = "Error updating view mode" }
             }
         } else {
             _globalViewMode.value = mode
@@ -61,57 +67,75 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
     fun updateFolderSettings(color: Long?, iconName: String?, defaultViewModeString: String?, showCompactPreviews: Boolean) {
         val folder = currentFolder.value ?: return
         viewModelScope.launch {
-            repository.updateFolder(
-                folder.copy(
-                    color = color,
-                    iconName = iconName,
-                    defaultViewModeString = defaultViewModeString,
-                    showCompactPreviews = showCompactPreviews,
-                    updatedAt = System.currentTimeMillis()
+            try {
+                repository.updateFolder(
+                    folder.copy(
+                        color = color,
+                        iconName = iconName,
+                        defaultViewModeString = defaultViewModeString,
+                        showCompactPreviews = showCompactPreviews,
+                        updatedAt = System.currentTimeMillis()
+                    )
                 )
-            )
+            } catch(e: Exception) {
+                _error.value = "Error saving folder settings"
+            }
         }
     }
 
     fun createFolder(name: String) {
+        if (name.isBlank()) return
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            repository.insertFolder(
-                FolderEntity(name = name, parentFolderId = _currentFolderId.value, createdAt = now, updatedAt = now)
-            )
-            updateParentFolderTimestamp()
+            try {
+                val now = System.currentTimeMillis()
+                repository.insertFolder(
+                    FolderEntity(name = name, parentFolderId = _currentFolderId.value, createdAt = now, updatedAt = now)
+                )
+                updateParentFolderTimestamp()
+            } catch(e: Exception) { _error.value = "Error creating folder" }
         }
     }
 
     fun createNote(title: String, content: String = "") {
+        if (title.isBlank()) return
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            repository.insertNote(
-                NoteEntity(title = title, content = content, previewText = StringUtils.extractPreviewText(content), parentFolderId = _currentFolderId.value, createdAt = now, updatedAt = now)
-            )
-            updateParentFolderTimestamp()
+            try {
+                val now = System.currentTimeMillis()
+                repository.insertNote(
+                    NoteEntity(title = title, content = content, previewText = StringUtils.extractPreviewText(content), parentFolderId = _currentFolderId.value, createdAt = now, updatedAt = now)
+                )
+                updateParentFolderTimestamp()
+            } catch(e: Exception) { _error.value = "Error creating note: ${e.localizedMessage}" }
         }
     }
 
     fun deleteFolder(folder: FolderEntity) {
         viewModelScope.launch {
-            repository.deleteFolder(folder)
-            updateParentFolderTimestamp()
+            try {
+                repository.deleteFolder(folder)
+                updateParentFolderTimestamp()
+            } catch(e: Exception) { _error.value = "Error deleting folder" }
         }
     }
 
     fun deleteNote(note: NoteEntity) {
         viewModelScope.launch {
-            repository.deleteNote(note)
-            updateParentFolderTimestamp()
+            try {
+                repository.deleteNote(note)
+                updateParentFolderTimestamp()
+            } catch(e: Exception) { _error.value = "Error deleting note" }
         }
     }
-    
+
     private suspend fun updateParentFolderTimestamp() {
-        _currentFolderId.value?.let { parentId ->
-            repository.getFolderById(parentId)?.let { 
-                repository.updateFolder(it.copy(updatedAt = System.currentTimeMillis())) 
-            }
+        val parentId = _currentFolderId.value
+        if (parentId != null) {
+            try {
+                val parent = repository.getFolderById(parentId)
+                if (parent != null) {
+                    repository.updateFolder(parent.copy(updatedAt = System.currentTimeMillis()))
+                }
+            } catch(e: Exception) {}
         }
     }
 }

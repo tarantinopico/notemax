@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FormatPaint
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -126,7 +125,7 @@ fun FolderSettingsSheet(
                         Icon(
                             FolderIcons.getIcon(iconName),
                             contentDescription = iconName,
-                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isSelected) (selectedColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primary) else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -141,13 +140,10 @@ fun FolderSettingsSheet(
             }
 
             Text("Default View Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ViewModeChip("Inherit", selectedViewMode == null) { selectedViewMode = null }
-                ViewModeChip("List", selectedViewMode == "LIST") { selectedViewMode = "LIST" }
-                ViewModeChip("Grid", selectedViewMode == "GRID") { selectedViewMode = "GRID" }
-                ViewModeChip("Table", selectedViewMode == "TABLE") { selectedViewMode = "TABLE" }
+            SegmentedViewModePicker(selectedViewMode = selectedViewMode) { mode ->
+                selectedViewMode = mode
             }
-
+            
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
@@ -166,15 +162,35 @@ fun FolderSettingsSheet(
 }
 
 @Composable
-fun ViewModeChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label) },
-        shape = RoundedCornerShape(16.dp),
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-    )
+fun SegmentedViewModePicker(selectedViewMode: String?, onSelected: (String?) -> Unit) {
+    val options = listOf(null to "Inherit", "LIST" to "List", "GRID" to "Grid", "TABLE" to "Table")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        options.forEach { (value, label) ->
+            val isSelected = selectedViewMode == value
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                    .clickable { onSelected(value) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+    }
 }

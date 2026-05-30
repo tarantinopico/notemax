@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +38,7 @@ fun NoteScreen(
     onNavigateUp: () -> Unit
 ) {
     val note by viewModel.note.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     var isEditing by remember { mutableStateOf(false) }
 
     var editTitle by remember { mutableStateOf("") }
@@ -44,6 +46,7 @@ fun NoteScreen(
     var editAttachedFileUri by remember { mutableStateOf<String?>(null) }
     
     val context = LocalContext.current
+    val historyManager = remember { EditorHistory() }
 
     val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri?.let {
@@ -55,12 +58,27 @@ fun NoteScreen(
             }
         }
     }
+    
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
 
     LaunchedEffect(note) {
         if (!isEditing && note != null) {
             editTitle = note!!.title
-            textState = TextFieldValue(note!!.content)
+            val initialText = TextFieldValue(note!!.content)
+            textState = initialText
             editAttachedFileUri = note!!.attachedFileUri
+            historyManager.push(initialText)
+        }
+    }
+
+    LaunchedEffect(editTitle, textState.text, editAttachedFileUri) {
+        if (isEditing && note != null) {
+            viewModel.updateNoteDebounced(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri)
         }
     }
 
@@ -75,11 +93,8 @@ fun NoteScreen(
 
     val handleBack = {
         if (isEditing) {
-            if (editTitle != note!!.title || textState.text != note!!.content || editAttachedFileUri != note!!.attachedFileUri) {
-                showDiscardDialog = true
-            } else {
-                isEditing = false
-            }
+            viewModel.updateNote(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri)
+            isEditing = false
         } else {
             onNavigateUp()
         }
@@ -103,10 +118,12 @@ fun NoteScreen(
         val newSelectionStart = start + prefix.length
         val newSelectionEnd = newSelectionStart + replacement.length
         
-        textState = textState.copy(
+        val newState = textState.copy(
             text = newText,
             selection = TextRange(newSelectionStart, newSelectionEnd)
         )
+        textState = newState
+        historyManager.push(newState)
     }
 
     Scaffold(
@@ -132,6 +149,18 @@ fun NoteScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        IconButton(onClick = { historyManager.undo()?.let { textState = it } }, enabled = historyManager.canUndo, modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (historyManager.canUndo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                        }
+                        IconButton(onClick = { historyManager.redo()?.let { textState = it } }, enabled = historyManager.canRedo, modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.Redo, "Redo", tint = if (historyManager.canRedo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.height(24.dp).width(1.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                        )
+                        
                         ToolbarButton(text = "H1", onClick = { insertFormatting("# ", "") })
                         ToolbarButton(text = "H2", onClick = { insertFormatting("## ", "") })
                         ToolbarButton(text = "H3", onClick = { insertFormatting("### ", "") })
@@ -157,7 +186,7 @@ fun NoteScreen(
                         )
                         
                         IconButton(onClick = { insertFormatting("- ", "") }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.FormatListBulleted, "Bulleted List", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "Bulleted List", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         IconButton(onClick = { insertFormatting("1. ", "") }, modifier = Modifier.size(40.dp)) {
                             Icon(Icons.Default.FormatListNumbered, "Numbered List", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -185,7 +214,6 @@ fun NoteScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Elegant Native Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -200,7 +228,7 @@ fun NoteScreen(
                         .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
                 ) {
                     Icon(
-                        if (isEditing) Icons.Default.Close else Icons.Default.ArrowBack, 
+                        if (isEditing) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, 
                         contentDescription = "Back or Cancel", 
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -221,7 +249,7 @@ fun NoteScreen(
                         shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
                     ) {
-                        Text("Save", fontWeight = FontWeight.SemiBold)
+                        Text("Finish Editing", fontWeight = FontWeight.SemiBold)
                     }
                 } else {
                     IconButton(
@@ -321,7 +349,7 @@ fun NoteScreen(
                                 },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.OpenInNew, contentDescription = "Open File", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Open File", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -330,12 +358,16 @@ fun NoteScreen(
                 if (isEditing) {
                     BasicTextField(
                         value = textState,
-                        onValueChange = { textState = it },
+                        onValueChange = { 
+                            textState = it 
+                            historyManager.push(it)
+                        },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onBackground,
                             lineHeight = 26.sp
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        visualTransformation = MarkdownVisualTransformation(MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f, fill = false)
@@ -361,17 +393,14 @@ fun NoteScreen(
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
-            title = { Text("Discard changes?", fontWeight = FontWeight.Bold) },
+            title = { Text("Go back?", fontWeight = FontWeight.Bold) },
             shape = RoundedCornerShape(24.dp),
-            text = { Text("You have unsaved changes. Are you sure you want to discard them?") },
+            text = { Text("Are you sure you want to exit editing mode?") },
             confirmButton = {
                 TextButton(onClick = {
                     showDiscardDialog = false
                     isEditing = false
-                    editTitle = note!!.title
-                    textState = TextFieldValue(note!!.content)
-                    editAttachedFileUri = note!!.attachedFileUri
-                }) { Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
+                }) { Text("Exit", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { showDiscardDialog = false }) { Text("Cancel") }

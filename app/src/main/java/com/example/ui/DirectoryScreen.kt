@@ -27,6 +27,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.entities.FolderEntity
 import com.example.data.entities.FolderItem
 import com.example.data.entities.NoteEntity
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun DirectoryScreen(
@@ -39,6 +41,15 @@ fun DirectoryScreen(
     val folders by viewModel.folders.collectAsStateWithLifecycle()
     val notes by viewModel.notes.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    
+    val context = LocalContext.current
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
     
     var showAddFolderDialog by remember { mutableStateOf(false) }
     var showAddNoteDialog by remember { mutableStateOf(false) }
