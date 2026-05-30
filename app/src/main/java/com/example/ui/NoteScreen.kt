@@ -31,13 +31,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteScreen(
     viewModel: NoteDetailViewModel,
-    onNavigateUp: () -> Unit
+    onNavigateUp: () -> Unit,
+    onNavigateToNote: (Long) -> Unit
 ) {
     val note by viewModel.note.collectAsStateWithLifecycle()
+    val allNotes by viewModel.allNotes.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     var isEditing by remember { mutableStateOf(false) }
 
@@ -45,8 +54,21 @@ fun NoteScreen(
     var textState by remember { mutableStateOf(TextFieldValue("")) }
     var editAttachedFileUri by remember { mutableStateOf<String?>(null) }
     
+    // Drawing State
+    var isSketchMode by remember { mutableStateOf(false) }
+    var activeTool by remember { mutableStateOf(ToolType.PEN) }
+    var activeColor by remember { mutableStateOf(Color.Black) }
+    var activeStrokeWidth by remember { mutableStateOf(8f) }
+    var currentStrokes by remember { mutableStateOf<List<DrawingStroke>>(emptyList()) }
+    var initialStrokesLoaded by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
     val historyManager = remember { EditorHistory() }
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    
+    var showNotePicker by remember { mutableStateOf(false) }
+    var linkInsertPosition by remember { mutableStateOf(-1) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         uri?.let {
@@ -73,12 +95,27 @@ fun NoteScreen(
             textState = initialText
             editAttachedFileUri = note!!.attachedFileUri
             historyManager.push(initialText)
+            
+            if (!initialStrokesLoaded) {
+                scope.launch(Dispatchers.IO) {
+                    val parsed = DrawingSerializer.deserialize(note!!.drawingData)
+                    withContext(Dispatchers.Main) {
+                        currentStrokes = parsed
+                        initialStrokesLoaded = true
+                    }
+                }
+            }
         }
     }
 
-    LaunchedEffect(editTitle, textState.text, editAttachedFileUri) {
+    LaunchedEffect(editTitle, textState.text, editAttachedFileUri, currentStrokes) {
         if (isEditing && note != null) {
-            viewModel.updateNoteDebounced(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri)
+            scope.launch(Dispatchers.IO) {
+                val serialized = DrawingSerializer.serialize(currentStrokes)
+                withContext(Dispatchers.Main) {
+                    viewModel.updateNoteDebounced(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri, serialized)
+                }
+            }
         }
     }
 
@@ -91,16 +128,23 @@ fun NoteScreen(
 
     var showDiscardDialog by remember { mutableStateOf(false) }
 
-    val handleBack = {
+    val handleBack: () -> Unit = {
         if (isEditing) {
-            viewModel.updateNote(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri)
-            isEditing = false
+            scope.launch(Dispatchers.IO) {
+                val serialized = DrawingSerializer.serialize(currentStrokes)
+                withContext(Dispatchers.Main) {
+                    viewModel.updateNote(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri, serialized)
+                    isEditing = false
+                    isSketchMode = false
+                }
+            }
         } else {
             onNavigateUp()
         }
     }
 
     fun insertFormatting(prefix: String, suffix: String = "") {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         val start = textState.selection.min
         val end = textState.selection.max
         val text = textState.text
@@ -141,17 +185,51 @@ fun NoteScreen(
                     tonalElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { historyManager.undo()?.let { textState = it } }, enabled = historyManager.canUndo, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (historyManager.canUndo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                    Column {
+                        if (isSketchMode) {
+                            DrawingToolbar(
+                                activeTool = activeTool,
+                                onToolSelected = { activeTool = it },
+                                activeColor = activeColor,
+                                onColorSelected = { activeColor = it },
+                                activeStrokeWidth = activeStrokeWidth,
+                                onStrokeWidthSelected = { activeStrokeWidth = it },
+                                onClearAll = { 
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    currentStrokes = emptyList() 
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
                         }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { 
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    isSketchMode = !isSketchMode 
+                                }, 
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(if (isSketchMode) Icons.Default.Edit else Icons.Default.Create, "Toggle Sketch Mode", tint = if (isSketchMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            
+                            HorizontalDivider(
+                                modifier = Modifier.height(24.dp).width(1.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                            )
+                            
+                            IconButton(onClick = { 
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                historyManager.undo()?.let { textState = it } 
+                            }, enabled = historyManager.canUndo, modifier = Modifier.size(40.dp)) {
+                                Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (historyManager.canUndo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                            }
                         IconButton(onClick = { historyManager.redo()?.let { textState = it } }, enabled = historyManager.canRedo, modifier = Modifier.size(40.dp)) {
                             Icon(Icons.AutoMirrored.Filled.Redo, "Redo", tint = if (historyManager.canRedo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
                         }
@@ -207,7 +285,8 @@ fun NoteScreen(
                 }
             }
         }
-    ) { padding ->
+    }
+) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -239,8 +318,14 @@ fun NoteScreen(
                 if (isEditing) {
                     Button(
                         onClick = {
-                            viewModel.updateNote(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri)
-                            isEditing = false
+                            scope.launch(Dispatchers.IO) {
+                                val serialized = DrawingSerializer.serialize(currentStrokes)
+                                withContext(Dispatchers.Main) {
+                                    viewModel.updateNote(editTitle.ifBlank { "Untitled Note" }, textState.text, editAttachedFileUri, serialized)
+                                    isEditing = false
+                                    isSketchMode = false
+                                }
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -355,39 +440,110 @@ fun NoteScreen(
                     }
                 }
 
-                if (isEditing) {
-                    BasicTextField(
-                        value = textState,
-                        onValueChange = { 
-                            textState = it 
-                            historyManager.push(it)
-                        },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onBackground,
-                            lineHeight = 26.sp
-                        ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        visualTransformation = MarkdownVisualTransformation(MaterialTheme.colorScheme.primary),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                            .padding(bottom = 32.dp),
-                        decorationBox = { innerTextField ->
-                            if (textState.text.isEmpty()) {
-                                Text(
-                                    "Start writing... (Markdown supported)", 
-                                    style = MaterialTheme.typography.bodyLarge, 
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(bottom = 32.dp)
+                ) {
+                    if (isEditing) {
+                        BasicTextField(
+                            value = textState,
+                            onValueChange = { newValue ->
+                                var updatedValue = newValue
+                                val oldText = textState.text
+                                val newText = newValue.text
+                                
+                                if (newText.length > oldText.length) {
+                                    val cursor = newValue.selection.start
+                                    val rules = listOf(
+                                        "->" to "→", "=>" to "⇒", "*>" to "✦", "[ ]" to "☐", "[x]" to "☑"
+                                    )
+                                    for ((trigger, replacement) in rules) {
+                                        if (cursor >= trigger.length && newText.substring(cursor - trigger.length, cursor) == trigger) {
+                                            val replaced = newText.substring(0, cursor - trigger.length) + replacement + newText.substring(cursor)
+                                            updatedValue = TextFieldValue(replaced, TextRange(cursor - trigger.length + replacement.length))
+                                            break
+                                        }
+                                    }
+                                    if (cursor >= 2 && newText.substring(cursor - 2, cursor) == "[[") {
+                                        linkInsertPosition = cursor
+                                        showNotePicker = true
+                                    }
+                                }
+                                textState = updatedValue
+                                historyManager.push(updatedValue)
+                            },
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onBackground,
+                                lineHeight = 26.sp
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            visualTransformation = MarkdownVisualTransformation(MaterialTheme.colorScheme.primary),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
+                            decorationBox = { innerTextField ->
+                                if (textState.text.isEmpty()) {
+                                    Text(
+                                        "Start writing... (Markdown supported)", 
+                                        style = MaterialTheme.typography.bodyLarge, 
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                                innerTextField()
                             }
-                            innerTextField()
-                        }
-                    )
-                } else {
-                    MarkdownText(text = note!!.content, modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp))
+                        )
+                    } else {
+                        MarkdownText(
+                            text = note!!.content, 
+                            modifier = Modifier.fillMaxWidth(),
+                            onNoteLinkClick = { title ->
+                                scope.launch {
+                                    val id = viewModel.findNoteIdByTitle(title)
+                                    if (id != null) {
+                                        onNavigateToNote(id)
+                                    } else {
+                                        Toast.makeText(context, "Note not found", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    
+                    if (isSketchMode || currentStrokes.isNotEmpty()) {
+                        SketchLayer(
+                            modifier = Modifier.matchParentSize(),
+                            strokes = currentStrokes,
+                            isEditable = isSketchMode,
+                            onStrokeAdded = { stroke -> currentStrokes = currentStrokes + stroke },
+                            activeTool = activeTool,
+                            activeColor = activeColor,
+                            activeStrokeWidth = activeStrokeWidth
+                        )
+                    }
                 }
             }
         }
+    }
+
+    if (showNotePicker) {
+        NotePickerBottomSheet(
+            notes = allNotes,
+            onNoteSelected = { selectedNote ->
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                val insertText = "${selectedNote.title}]]"
+                val prefix = textState.text.substring(0, linkInsertPosition)
+                val suffix = textState.text.substring(linkInsertPosition)
+                val newText = prefix + insertText + suffix
+                val newCursor = linkInsertPosition + insertText.length
+                val newState = TextFieldValue(newText, TextRange(newCursor))
+                textState = newState
+                historyManager.push(newState)
+                showNotePicker = false
+            },
+            onDismiss = { showNotePicker = false }
+        )
     }
 
     if (showDiscardDialog) {

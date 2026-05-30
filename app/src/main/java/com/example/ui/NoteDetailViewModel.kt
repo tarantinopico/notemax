@@ -26,6 +26,13 @@ class NoteDetailViewModel(private val repository: NoteMaxRepository) : ViewModel
         if (id == null) kotlinx.coroutines.flow.flowOf(null) else repository.getNoteFlow(id)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val allNotes: StateFlow<List<NoteEntity>> = repository.getAllNotesFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    suspend fun findNoteIdByTitle(title: String): Long? {
+        return repository.getNoteByTitle(title)?.id
+    }
+
     fun loadNote(id: Long) {
         _noteId.value = id
     }
@@ -34,22 +41,22 @@ class NoteDetailViewModel(private val repository: NoteMaxRepository) : ViewModel
         _error.value = null
     }
 
-    fun updateNoteDebounced(title: String, content: String, attachedFileUri: String?) {
+    fun updateNoteDebounced(title: String, content: String, attachedFileUri: String?, drawingData: String) {
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
             delay(1500)
-            saveNoteInternal(title, content, attachedFileUri)
+            saveNoteInternal(title, content, attachedFileUri, drawingData)
         }
     }
 
-    fun updateNote(title: String, content: String, attachedFileUri: String?) {
+    fun updateNote(title: String, content: String, attachedFileUri: String?, drawingData: String) {
         autoSaveJob?.cancel()
         viewModelScope.launch {
-            saveNoteInternal(title, content, attachedFileUri)
+            saveNoteInternal(title, content, attachedFileUri, drawingData)
         }
     }
     
-    private suspend fun saveNoteInternal(title: String, content: String, attachedFileUri: String?) {
+    private suspend fun saveNoteInternal(title: String, content: String, attachedFileUri: String?, drawingData: String) {
         try {
             val currentNote = note.value
             if (currentNote != null) {
@@ -59,6 +66,7 @@ class NoteDetailViewModel(private val repository: NoteMaxRepository) : ViewModel
                         content = content,
                         previewText = StringUtils.extractPreviewText(content),
                         attachedFileUri = attachedFileUri,
+                        drawingData = drawingData,
                         updatedAt = System.currentTimeMillis()
                     )
                 )

@@ -159,7 +159,8 @@ class MainActivity : ComponentActivity() {
                             
                             NoteScreen(
                                 viewModel = noteViewModel,
-                                onNavigateUp = { navController.popBackStack() }
+                                onNavigateUp = { navController.popBackStack() },
+                                onNavigateToNote = { id -> navController.navigate("note/$id") }
                             )
                         }
 

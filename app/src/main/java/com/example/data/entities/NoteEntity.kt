@@ -24,6 +24,7 @@ data class NoteEntity(
     val parentFolderId: Long? = null,
     val attachedFileUri: String? = null,
     val previewText: String = "",
+    val drawingData: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

@@ -19,6 +19,10 @@ class NoteMaxRepository(
         return if (parentId == null) noteDao.getRootNotes() else noteDao.getNotesInParent(parentId)
     }
 
+    fun getAllNotesFlow(): Flow<List<NoteEntity>> = noteDao.getAllNotesFlow()
+
+    suspend fun getNoteByTitle(title: String): NoteEntity? = noteDao.getNoteByTitle(title)
+
     fun getFolderFlow(id: Long): Flow<FolderEntity?> = folderDao.getFolderByIdFlow(id)
     suspend fun getFolderById(id: Long): FolderEntity? = folderDao.getFolderById(id)
 

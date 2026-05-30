@@ -19,7 +19,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun MarkdownText(text: String, modifier: Modifier = Modifier) {
+fun MarkdownText(text: String, modifier: Modifier = Modifier, onNoteLinkClick: ((String) -> Unit)? = null) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val annotatedString = parseMarkdownImproved(text, colorScheme.primary)
@@ -41,6 +41,10 @@ fun MarkdownText(text: String, modifier: Modifier = Modifier) {
                     } catch (e: Exception) {
                         Toast.makeText(context, "Could not open link", Toast.LENGTH_SHORT).show()
                     }
+                }
+            annotatedString.getStringAnnotations(tag = "WIKILINK", start = offset, end = offset)
+                .firstOrNull()?.let { annotation ->
+                    onNoteLinkClick?.invoke(annotation.item)
                 }
         }
     )
@@ -94,7 +98,7 @@ fun parseMarkdownImproved(text: String, primaryColor: androidx.compose.ui.graphi
 }
 
 fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryColor: androidx.compose.ui.graphics.Color) {
-    val regex = Regex("(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
+    val regex = Regex("(\\[\\[.*?\\]\\])|(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
     val matches = regex.findAll(text)
     
     var currentIndex = 0
@@ -105,6 +109,14 @@ fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryC
         
         val matchText = match.value
         when {
+            matchText.startsWith("[[") && matchText.endsWith("]]") -> {
+                val title = matchText.substring(2, matchText.length - 2)
+                builder.pushStringAnnotation(tag = "WIKILINK", annotation = title)
+                builder.withStyle(SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) {
+                    append(title)
+                }
+                builder.pop()
+            }
             matchText.startsWith("**") && matchText.endsWith("**") -> {
                 builder.withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                     append(matchText.removeSurrounding("**"))

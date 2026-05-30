@@ -11,7 +11,7 @@ import com.example.data.dao.NoteDao
 import com.example.data.entities.FolderEntity
 import com.example.data.entities.NoteEntity
 
-@Database(entities = [FolderEntity::class, NoteEntity::class], version = 3, exportSchema = false)
+@Database(entities = [FolderEntity::class, NoteEntity::class], version = 4, exportSchema = false)
 abstract class NoteMaxDatabase : RoomDatabase() {
     abstract fun folderDao(): FolderDao
     abstract fun noteDao(): NoteDao
@@ -37,6 +37,12 @@ abstract class NoteMaxDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE notes ADD COLUMN drawingData TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getDatabase(context: Context): NoteMaxDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -44,7 +50,7 @@ abstract class NoteMaxDatabase : RoomDatabase() {
                     NoteMaxDatabase::class.java,
                     "notemax_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
