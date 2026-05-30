@@ -33,6 +33,7 @@ class NoteDetailViewModel(private val repository: NoteMaxRepository) : ViewModel
                     currentNote.copy(
                         title = title,
                         content = content,
+                        previewText = StringUtils.extractPreviewText(content),
                         attachedFileUri = attachedFileUri,
                         updatedAt = System.currentTimeMillis()
                     )

@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,10 @@ fun DirectoryScreen(
     var showAddNoteDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf<Any?>(null) } 
     var showViewModeMenu by remember { mutableStateOf(false) }
+    var showFolderSettingsDialog by remember { mutableStateOf(false) }
+
+    val accentColor = currentFolder?.color?.let { Color(it) } 
+        ?: MaterialTheme.colorScheme.primary
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -61,17 +66,19 @@ fun DirectoryScreen(
                     text = { Text("New Note", fontWeight = FontWeight.SemiBold) },
                     icon = { Icon(Icons.Default.Add, contentDescription = "Add Note") },
                     onClick = { showAddNoteDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = accentColor,
+                    contentColor = if (accentColor == MaterialTheme.colorScheme.primary) MaterialTheme.colorScheme.onPrimary else Color.White
                 )
             }
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).background(MaterialTheme.colorScheme.background)) {
             // Elegant Native Header
+            val headerBg = currentFolder?.color?.let { Color(it).copy(alpha = 0.1f) } ?: Color.Transparent
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(headerBg)
                     .padding(horizontal = 24.dp, vertical = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -91,9 +98,21 @@ fun DirectoryScreen(
                     text = currentFolder?.name ?: "NoteMax",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = currentFolder?.color?.let { Color(it) } ?: MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f)
                 )
+                
+                if (currentFolder != null) {
+                    IconButton(
+                        onClick = { showFolderSettingsDialog = true },
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .size(44.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Folder Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 
                 Box {
                     IconButton(
@@ -137,11 +156,12 @@ fun DirectoryScreen(
                 if (folders.isEmpty() && notes.isEmpty()) {
                     EmptyState()
                 } else {
+                    val showCompact = currentFolder?.showCompactPreviews == true
                     Crossfade(targetState = viewMode, label = "view_mode_anim") { mode ->
                         when (mode) {
-                            ViewMode.LIST -> ListView(folders, notes, onNavigateToFolder, onNavigateToNote, { showDeleteConfirmDialog = it })
-                            ViewMode.GRID -> GridView(folders, notes, onNavigateToFolder, onNavigateToNote, { showDeleteConfirmDialog = it })
-                            ViewMode.TABLE -> TableView(folders, notes, onNavigateToFolder, onNavigateToNote, { showDeleteConfirmDialog = it })
+                            ViewMode.LIST -> ListView(folders, notes, showCompact, onNavigateToFolder, onNavigateToNote, { showDeleteConfirmDialog = it })
+                            ViewMode.GRID -> GridView(folders, notes, showCompact, onNavigateToFolder, onNavigateToNote, { showDeleteConfirmDialog = it })
+                            ViewMode.TABLE -> TableView(folders, notes, showCompact, onNavigateToFolder, onNavigateToNote, { showDeleteConfirmDialog = it })
                         }
                     }
                 }
@@ -221,6 +241,14 @@ fun DirectoryScreen(
             }
         )
     }
+
+    if (showFolderSettingsDialog && currentFolder != null) {
+        FolderSettingsSheet(
+            folder = currentFolder!!,
+            onDismiss = { showFolderSettingsDialog = false },
+            onSave = { c, i, v, p -> viewModel.updateFolderSettings(c, i, v, p) }
+        )
+    }
 }
 
 @Composable
@@ -239,7 +267,7 @@ fun EmptyState() {
 }
 
 @Composable
-fun ListView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick: (Long) -> Unit, onNoteClick: (Long) -> Unit, onDelete: (Any) -> Unit) {
+fun ListView(folders: List<FolderItem>, notes: List<NoteEntity>, showCompact: Boolean, onFolderClick: (Long) -> Unit, onNoteClick: (Long) -> Unit, onDelete: (Any) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), 
         verticalArrangement = Arrangement.spacedBy(16.dp), 
@@ -249,13 +277,13 @@ fun ListView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick: 
             FolderListRow(folderItem, onClick = { onFolderClick(folderItem.folder.id) }, onDelete = { onDelete(folderItem.folder) })
         }
         items(notes, key = { "n_${it.id}" }) { note ->
-            NoteListRow(note, onClick = { onNoteClick(note.id) }, onDelete = { onDelete(note) })
+            NoteListRow(note, showCompact, onClick = { onNoteClick(note.id) }, onDelete = { onDelete(note) })
         }
     }
 }
 
 @Composable
-fun GridView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick: (Long) -> Unit, onNoteClick: (Long) -> Unit, onDelete: (Any) -> Unit) {
+fun GridView(folders: List<FolderItem>, notes: List<NoteEntity>, showCompact: Boolean, onFolderClick: (Long) -> Unit, onNoteClick: (Long) -> Unit, onDelete: (Any) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(150.dp),
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -267,13 +295,13 @@ fun GridView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick: 
              FolderGridCard(folderItem, onClick = { onFolderClick(folderItem.folder.id) }, onDelete = { onDelete(folderItem.folder) })
         }
         items(notes, key = { "n_${it.id}" }) { note ->
-             NoteGridCard(note, onClick = { onNoteClick(note.id) }, onDelete = { onDelete(note) })
+             NoteGridCard(note, showCompact, onClick = { onNoteClick(note.id) }, onDelete = { onDelete(note) })
         }
     }
 }
 
 @Composable
-fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick: (Long) -> Unit, onNoteClick: (Long) -> Unit, onDelete: (Any) -> Unit) {
+fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, showCompact: Boolean, onFolderClick: (Long) -> Unit, onNoteClick: (Long) -> Unit, onDelete: (Any) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
         item {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -283,8 +311,10 @@ fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick:
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
         }
         items(folders, key = { "f_${it.folder.id}" }) { folderItem ->
+            val icon = FolderIcons.getIcon(folderItem.folder.iconName)
+            val iconTint = folderItem.folder.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
             Row(modifier = Modifier.fillMaxWidth().clickable { onFolderClick(folderItem.folder.id) }.padding(vertical = 16.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(2f)) {
                     Text(folderItem.folder.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -299,7 +329,12 @@ fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick:
             Row(modifier = Modifier.fillMaxWidth().clickable { onNoteClick(note.id) }.padding(vertical = 16.dp, horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(note.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(2f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(modifier = Modifier.weight(2f)) {
+                    Text(note.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (showCompact && note.previewText.isNotBlank()) {
+                         Text(note.previewText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
                 Text(formatShortDate(note.updatedAt), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), maxLines = 1)
                 IconButton(onClick = { onDelete(note) }) { Icon(Icons.Outlined.Delete, "Delete", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
@@ -310,24 +345,27 @@ fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, onFolderClick:
 
 @Composable
 fun FolderListRow(folderItem: FolderItem, onClick: () -> Unit, onDelete: () -> Unit) {
+    val fColor = folderItem.folder.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+    val icon = FolderIcons.getIcon(folderItem.folder.iconName)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
             .clickable { onClick() }
+            .border(1.dp, fColor.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(14.dp)),
+            modifier = Modifier.size(48.dp).background(fColor.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, null, tint = fColor)
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor)
             Spacer(modifier = Modifier.height(2.dp))
             val itemsStr = if (folderItem.totalChildren == 1) "1 item" else "${folderItem.totalChildren} items"
             Text("$itemsStr • ${formatShortDate(folderItem.folder.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -339,8 +377,8 @@ fun FolderListRow(folderItem: FolderItem, onClick: () -> Unit, onDelete: () -> U
 }
 
 @Composable
-fun NoteListRow(note: NoteEntity, onClick: () -> Unit, onDelete: () -> Unit) {
-    Row(
+fun NoteListRow(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
@@ -348,50 +386,64 @@ fun NoteListRow(note: NoteEntity, onClick: () -> Unit, onDelete: () -> Unit) {
             .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.secondary)
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text("Modified ${formatShortDate(note.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text("Modified ${formatShortDate(note.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (showCompact && note.previewText.isNotBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                note.previewText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
 @Composable
 fun FolderGridCard(folderItem: FolderItem, onClick: () -> Unit, onDelete: () -> Unit) {
+    val fColor = folderItem.folder.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
+    val icon = FolderIcons.getIcon(folderItem.folder.iconName)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+            .border(1.dp, fColor.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
             .clickable { onClick() }
             .padding(16.dp)
     ) {
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Box(
-                modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(14.dp)),
+                modifier = Modifier.size(48.dp).background(fColor.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(icon, null, tint = fColor)
             }
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                 Icon(Icons.Outlined.Delete, "Delete", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Spacer(modifier = Modifier.weight(1f))
-        Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(folderItem.folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = fColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(modifier = Modifier.height(4.dp))
         val itemsStr = if (folderItem.totalChildren == 1) "1 item" else "${folderItem.totalChildren} items"
         Text(itemsStr, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -399,7 +451,7 @@ fun FolderGridCard(folderItem: FolderItem, onClick: () -> Unit, onDelete: () -> 
 }
 
 @Composable
-fun NoteGridCard(note: NoteEntity, onClick: () -> Unit, onDelete: () -> Unit) {
+fun NoteGridCard(note: NoteEntity, showCompact: Boolean, onClick: () -> Unit, onDelete: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -421,6 +473,18 @@ fun NoteGridCard(note: NoteEntity, onClick: () -> Unit, onDelete: () -> Unit) {
                 Icon(Icons.Outlined.Delete, "Delete", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+        
+        if (showCompact && note.previewText.isNotBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                note.previewText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
         Spacer(modifier = Modifier.weight(1f))
         Text(note.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(modifier = Modifier.height(4.dp))

@@ -23,6 +23,7 @@ data class NoteEntity(
     val content: String,
     val parentFolderId: Long? = null,
     val attachedFileUri: String? = null,
+    val previewText: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
