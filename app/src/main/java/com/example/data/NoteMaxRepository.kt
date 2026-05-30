@@ -3,6 +3,7 @@ package com.example.data
 import com.example.data.dao.FolderDao
 import com.example.data.dao.NoteDao
 import com.example.data.entities.FolderEntity
+import com.example.data.entities.FolderItem
 import com.example.data.entities.NoteEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -10,8 +11,8 @@ class NoteMaxRepository(
     private val folderDao: FolderDao,
     private val noteDao: NoteDao
 ) {
-    fun getFolders(parentId: Long?): Flow<List<FolderEntity>> {
-        return if (parentId == null) folderDao.getRootFolders() else folderDao.getFoldersInParent(parentId)
+    fun getFoldersWithCounts(parentId: Long?): Flow<List<FolderItem>> {
+        return if (parentId == null) folderDao.getRootFoldersWithCounts() else folderDao.getFoldersInParentWithCounts(parentId)
     }
 
     fun getNotes(parentId: Long?): Flow<List<NoteEntity>> {
@@ -23,6 +24,10 @@ class NoteMaxRepository(
 
     suspend fun insertFolder(folder: FolderEntity) {
         folderDao.insertFolder(folder)
+    }
+
+    suspend fun updateFolder(folder: FolderEntity) {
+        folderDao.updateFolder(folder)
     }
 
     suspend fun deleteFolder(folder: FolderEntity) {

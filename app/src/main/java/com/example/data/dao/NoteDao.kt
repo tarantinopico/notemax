@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NoteDao {
-    @Query("SELECT * FROM notes WHERE parentFolderId IS NULL ORDER BY title ASC")
+    @Query("SELECT * FROM notes WHERE parentFolderId IS NULL ORDER BY updatedAt DESC, title ASC")
     fun getRootNotes(): Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM notes WHERE parentFolderId = :parentId ORDER BY title ASC")
+    @Query("SELECT * FROM notes WHERE parentFolderId = :parentId ORDER BY updatedAt DESC, title ASC")
     fun getNotesInParent(parentId: Long): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM notes WHERE id = :id")
