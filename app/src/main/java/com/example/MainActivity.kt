@@ -110,9 +110,61 @@ class MainActivity : FragmentActivity() {
                                 onNavigateToNote = { noteId ->
                                     navController.navigate("note/$noteId")
                                 },
+                                onNavigateToTable = { tableId ->
+                                    navController.navigate("table/$tableId")
+                                },
                                 onNavigateToSettings = {
                                     navController.navigate("settings")
                                 }
+                            )
+                        }
+
+                        composable(
+                            route = "table/{tableId}",
+                            arguments = listOf(navArgument("tableId") { type = NavType.LongType }),
+                            enterTransition = {
+                                androidx.compose.animation.scaleIn(
+                                    initialScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeIn(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            exitTransition = {
+                                androidx.compose.animation.scaleOut(
+                                    targetScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeOut(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            popEnterTransition = {
+                                androidx.compose.animation.scaleIn(
+                                    initialScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeIn(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            },
+                            popExitTransition = {
+                                androidx.compose.animation.scaleOut(
+                                    targetScale = 0.9f, 
+                                    animationSpec = androidx.compose.animation.core.tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                                ) + androidx.compose.animation.fadeOut(
+                                    animationSpec = androidx.compose.animation.core.tween(300)
+                                )
+                            }
+                        ) { backStackEntry ->
+                            val tableId = backStackEntry.arguments?.getLong("tableId") ?: return@composable
+                            val tableViewModel: com.example.ui.TableViewModel = viewModel(
+                                factory = AppViewModelProvider.factory(app.repository)
+                            )
+                            
+                            com.example.ui.TableScreen(
+                                viewModel = tableViewModel,
+                                tableId = tableId,
+                                onNavigateBack = { navController.popBackStack() },
+                                settingsManager = app.settingsManager
                             )
                         }
 

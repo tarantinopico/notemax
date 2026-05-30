@@ -308,7 +308,8 @@ fun parseMarkdownImproved(text: String, primaryColor: Color): AnnotatedString {
 }
 
 fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryColor: Color) {
-    val regex = Regex("(#important)|(@todo)|(==>)|(\\[\\[.*?\\]\\])|(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
+    val regex = Regex("(#important)|(@todo)|(==>)|([$]{2}TAG_BEGIN[$]{2}.*?[$]{2}TAG_END[$]{2})|(\\[\\[.*?\\]\\])|(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
+    val tagInnerRegex = Regex("[$]{2}TAG_BEGIN[$]{2}color:([0-9A-Fa-f]{6}),textColor:([0-9A-Fa-f]{6}),text:(.*?)[$]{2}TAG_END[$]{2}")
     val matches = regex.findAll(text)
     
     var currentIndex = 0
@@ -319,6 +320,18 @@ fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryC
         
         val matchText = match.value
         when {
+            matchText.startsWith("$$" + "TAG_BEGIN" + "$$") -> {
+                val tagMatch = tagInnerRegex.matchEntire(matchText)
+                if (tagMatch != null) {
+                    val colorStr = tagMatch.groupValues[1]
+                    val textColorStr = tagMatch.groupValues[2]
+                    val textStr = tagMatch.groupValues[3]
+                    val id = "tag_${colorStr}_${textColorStr}_${textStr}"
+                    builder.appendInlineContent(id, textStr)
+                } else {
+                    builder.append(matchText)
+                }
+            }
             matchText == "#important" -> {
                 builder.appendInlineContent("important", "[Important]")
             }

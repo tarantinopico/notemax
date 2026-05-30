@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 enum class InterfaceDensity { COZY, DEFAULT, COMPACT }
+enum class HapticIntensity { OFF, LIGHT, STRONG }
+enum class TableGridStyle { SUBTLE_LINES, CARDS, INVISIBLE }
 
 class SettingsManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
@@ -26,6 +28,12 @@ class SettingsManager(context: Context) {
 
     private val _isUiTransparencyEnabled = MutableStateFlow(prefs.getBoolean("ui_transparency_enabled", false))
     val isUiTransparencyEnabled: StateFlow<Boolean> = _isUiTransparencyEnabled.asStateFlow()
+
+    private val _hapticIntensity = MutableStateFlow(HapticIntensity.valueOf(prefs.getString("haptic_intensity", HapticIntensity.LIGHT.name) ?: HapticIntensity.LIGHT.name))
+    val hapticIntensity: StateFlow<HapticIntensity> = _hapticIntensity.asStateFlow()
+
+    private val _tableGridStyle = MutableStateFlow(TableGridStyle.valueOf(prefs.getString("table_grid_style", TableGridStyle.SUBTLE_LINES.name) ?: TableGridStyle.SUBTLE_LINES.name))
+    val tableGridStyle: StateFlow<TableGridStyle> = _tableGridStyle.asStateFlow()
 
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putString("theme_mode", mode.name).apply()
@@ -50,5 +58,15 @@ class SettingsManager(context: Context) {
     fun setUiTransparencyEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("ui_transparency_enabled", enabled).apply()
         _isUiTransparencyEnabled.value = enabled
+    }
+    
+    fun setHapticIntensity(intensity: HapticIntensity) {
+        prefs.edit().putString("haptic_intensity", intensity.name).apply()
+        _hapticIntensity.value = intensity
+    }
+    
+    fun setTableGridStyle(style: TableGridStyle) {
+        prefs.edit().putString("table_grid_style", style.name).apply()
+        _tableGridStyle.value = style
     }
 }

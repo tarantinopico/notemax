@@ -15,7 +15,8 @@ interface FolderDao {
     @Query("""
         SELECT f.*, 
         (SELECT COUNT(id) FROM folders WHERE parentFolderId = f.id) AS folderCount,
-        (SELECT COUNT(id) FROM notes WHERE parentFolderId = f.id) AS noteCount
+        (SELECT COUNT(id) FROM notes WHERE parentFolderId = f.id) AS noteCount,
+        (SELECT COUNT(id) FROM tables WHERE folderId = f.id) AS tableCount
         FROM folders f WHERE parentFolderId IS NULL ORDER BY f.updatedAt DESC, f.name ASC
     """)
     fun getRootFoldersWithCounts(): Flow<List<FolderItem>>
@@ -23,7 +24,8 @@ interface FolderDao {
     @Query("""
         SELECT f.*, 
         (SELECT COUNT(id) FROM folders WHERE parentFolderId = f.id) AS folderCount,
-        (SELECT COUNT(id) FROM notes WHERE parentFolderId = f.id) AS noteCount
+        (SELECT COUNT(id) FROM notes WHERE parentFolderId = f.id) AS noteCount,
+        (SELECT COUNT(id) FROM tables WHERE folderId = f.id) AS tableCount
         FROM folders f WHERE parentFolderId = :parentId ORDER BY f.updatedAt DESC, f.name ASC
     """)
     fun getFoldersInParentWithCounts(parentId: Long): Flow<List<FolderItem>>

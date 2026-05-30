@@ -56,11 +56,13 @@ fun DirectoryScreen(
     onNavigateToFolder: (Long) -> Unit,
     onNavigateUp: () -> Unit,
     onNavigateToNote: (Long) -> Unit,
+    onNavigateToTable: (Long) -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
     val currentFolder by viewModel.currentFolder.collectAsStateWithLifecycle()
     val folders by viewModel.folders.collectAsStateWithLifecycle()
     val notes by viewModel.notes.collectAsStateWithLifecycle()
+    val tables by viewModel.tables.collectAsStateWithLifecycle()
     val images by viewModel.images.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
@@ -77,6 +79,7 @@ fun DirectoryScreen(
     
     var showAddFolderDialog by remember { mutableStateOf(false) }
     var showAddNoteDialog by remember { mutableStateOf(false) }
+    var showAddTableDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf<Any?>(null) } 
     var showViewModeMenu by remember { mutableStateOf(false) }
     var showFolderSettingsDialog by remember { mutableStateOf(false) }
@@ -190,6 +193,14 @@ fun DirectoryScreen(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
                             Icon(Icons.Default.CreateNewFolder, contentDescription = "Add Folder")
+                        }
+                        SmallFloatingActionButton(
+                            onClick = { showAddTableDialog = true; showFabMenu = false },
+                            modifier = Modifier.padding(bottom = 16.dp),
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
+                            Icon(Icons.Default.TableChart, contentDescription = "Add Table")
                         }
                         ExtendedFloatingActionButton(
                             text = { Text("New Note", fontWeight = FontWeight.SemiBold) },
@@ -306,15 +317,15 @@ fun DirectoryScreen(
             }
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                if (folders.isEmpty() && notes.isEmpty() && images.isEmpty()) {
+                if (folders.isEmpty() && notes.isEmpty() && images.isEmpty() && tables.isEmpty()) {
                     EmptyState()
                 } else {
                     val showCompact = currentFolder?.showCompactPreviews == true
                     Crossfade(targetState = viewMode, label = "view_mode_anim") { mode ->
                         when (mode) {
-                            ViewMode.LIST -> ListView(folders, notes, images, showCompact, attemptFolderNavigation, onNavigateToNote, { viewingImageUri = it.uri }, { showDeleteConfirmDialog = it }, { viewModel.lockFolder(it) })
-                            ViewMode.GRID -> GridView(folders, notes, images, showCompact, attemptFolderNavigation, onNavigateToNote, { viewingImageUri = it.uri }, { showDeleteConfirmDialog = it }, { viewModel.lockFolder(it) })
-                            ViewMode.TABLE -> TableView(folders, notes, images, showCompact, attemptFolderNavigation, onNavigateToNote, { viewingImageUri = it.uri }, { showDeleteConfirmDialog = it }, { viewModel.lockFolder(it) })
+                            ViewMode.LIST -> ListView(folders, notes, images, tables, showCompact, attemptFolderNavigation, onNavigateToNote, { viewingImageUri = it.uri }, onNavigateToTable, { showDeleteConfirmDialog = it }, { viewModel.lockFolder(it) })
+                            ViewMode.GRID -> GridView(folders, notes, images, tables, showCompact, attemptFolderNavigation, onNavigateToNote, { viewingImageUri = it.uri }, onNavigateToTable, { showDeleteConfirmDialog = it }, { viewModel.lockFolder(it) })
+                            ViewMode.TABLE -> TableView(folders, notes, images, tables, showCompact, attemptFolderNavigation, onNavigateToNote, { viewingImageUri = it.uri }, onNavigateToTable, { showDeleteConfirmDialog = it }, { viewModel.lockFolder(it) })
                         }
                     }
                 }
@@ -372,6 +383,31 @@ fun DirectoryScreen(
         )
     }
 
+    if (showAddTableDialog) {
+        var title by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddTableDialog = false },
+            title = { Text("New Table", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Table Title") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (title.isNotBlank()) viewModel.createTable(title)
+                    showAddTableDialog = false
+                }) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddTableDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     showDeleteConfirmDialog?.let { item ->
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = null },
@@ -382,6 +418,7 @@ fun DirectoryScreen(
                     if (item is FolderEntity) viewModel.deleteFolder(item)
                     else if (item is NoteEntity) viewModel.deleteNote(item)
                     else if (item is ImageEntity) viewModel.deleteImage(item)
+                    else if (item is com.example.data.entities.TableEntity) viewModel.deleteTable(item)
                     showDeleteConfirmDialog = null
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
@@ -474,11 +511,16 @@ fun SwipeableItem(
 }
 
 @Composable
-fun ListView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<ImageEntity>, showCompact: Boolean, onFolderClick: (FolderEntity) -> Unit, onNoteClick: (Long) -> Unit, onImageClick: (ImageEntity) -> Unit, onDelete: (Any) -> Unit, onLock: (FolderEntity) -> Unit) {
+fun ListView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<ImageEntity>, tables: List<com.example.data.entities.TableEntity>, showCompact: Boolean, onFolderClick: (FolderEntity) -> Unit, onNoteClick: (Long) -> Unit, onImageClick: (ImageEntity) -> Unit, onTableClick: (Long) -> Unit, onDelete: (Any) -> Unit, onLock: (FolderEntity) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 100.dp)) {
         items(folders) { folderItem ->
             SwipeableItem(onDelete = { onDelete(folderItem.folder) }, onLock = { onLock(folderItem.folder) }) {
                 FolderListRow(folderItem, onClick = { onFolderClick(folderItem.folder) }, onDelete = { onDelete(folderItem.folder) })
+            }
+        }
+        items(tables) { table ->
+            SwipeableItem(onDelete = { onDelete(table) }) {
+                TableListRow(table, onClick = { onTableClick(table.id) })
             }
         }
         items(notes) { note ->
@@ -495,7 +537,7 @@ fun ListView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<Im
 }
 
 @Composable
-fun GridView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<ImageEntity>, showCompact: Boolean, onFolderClick: (FolderEntity) -> Unit, onNoteClick: (Long) -> Unit, onImageClick: (ImageEntity) -> Unit, onDelete: (Any) -> Unit, onLock: (FolderEntity) -> Unit) {
+fun GridView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<ImageEntity>, tables: List<com.example.data.entities.TableEntity>, showCompact: Boolean, onFolderClick: (FolderEntity) -> Unit, onNoteClick: (Long) -> Unit, onImageClick: (ImageEntity) -> Unit, onTableClick: (Long) -> Unit, onDelete: (Any) -> Unit, onLock: (FolderEntity) -> Unit) {
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(150.dp),
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -506,6 +548,11 @@ fun GridView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<Im
         items(folders) { folderItem ->
             SwipeableItem(onDelete = { onDelete(folderItem.folder) }, onLock = { onLock(folderItem.folder) }) {
                 FolderGridCard(folderItem, onClick = { onFolderClick(folderItem.folder) }, onDelete = { onDelete(folderItem.folder) })
+            }
+        }
+        items(tables) { table ->
+            SwipeableItem(onDelete = { onDelete(table) }) {
+                TableGridCard(table, onClick = { onTableClick(table.id) })
             }
         }
         items(notes) { note ->
@@ -522,9 +569,54 @@ fun GridView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<Im
 }
 
 @Composable
-fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<ImageEntity>, showCompact: Boolean, onFolderClick: (FolderEntity) -> Unit, onNoteClick: (Long) -> Unit, onImageClick: (ImageEntity) -> Unit, onDelete: (Any) -> Unit, onLock: (FolderEntity) -> Unit) {
+fun TableView(folders: List<FolderItem>, notes: List<NoteEntity>, images: List<ImageEntity>, tables: List<com.example.data.entities.TableEntity>, showCompact: Boolean, onFolderClick: (FolderEntity) -> Unit, onNoteClick: (Long) -> Unit, onImageClick: (ImageEntity) -> Unit, onTableClick: (Long) -> Unit, onDelete: (Any) -> Unit, onLock: (FolderEntity) -> Unit) {
     // Falls back to list for simplicity of table view logic in gestures
-    ListView(folders, notes, images, showCompact, onFolderClick, onNoteClick, onImageClick, onDelete, onLock)
+    ListView(folders, notes, images, tables, showCompact, onFolderClick, onNoteClick, onImageClick, onTableClick, onDelete, onLock)
+}
+
+@Composable
+fun TableListRow(table: com.example.data.entities.TableEntity, onClick: () -> Unit) {
+    com.example.ui.theme.GlassSurface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        alpha = 0.9f
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha=0.3f), RoundedCornerShape(20.dp)).padding(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.tertiary.copy(alpha=0.2f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.tertiary)
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(table.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text("Modified ${formatShortDate(table.updatedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha=0.7f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TableGridCard(table: com.example.data.entities.TableEntity, onClick: () -> Unit) {
+    com.example.ui.theme.GlassSurface(
+        modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        alpha = 0.9f
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha=0.3f), RoundedCornerShape(24.dp)).padding(16.dp)
+        ) {
+            Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.tertiary.copy(alpha=0.2f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.TableChart, null, tint = MaterialTheme.colorScheme.tertiary)
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(table.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onTertiaryContainer)
+        }
+    }
 }
 
 @Composable

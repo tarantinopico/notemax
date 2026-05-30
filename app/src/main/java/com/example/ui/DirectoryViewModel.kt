@@ -47,6 +47,11 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
     val notes = _currentFolderId.flatMapLatest { parentId ->
         repository.getNotes(parentId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val tables = _currentFolderId.flatMapLatest { parentId ->
+        repository.getTables(parentId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
     @OptIn(ExperimentalCoroutinesApi::class)
     val images = _currentFolderId.flatMapLatest { parentId ->
@@ -150,6 +155,23 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
         }
     }
 
+    fun createTable(title: String) {
+        if (title.isBlank()) return
+        val parentId = _currentFolderId.value ?: return
+        viewModelScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                val tableId = repository.insertTable(
+                    com.example.data.entities.TableEntity(title = title, folderId = parentId, createdAt = now, updatedAt = now)
+                )
+                repository.insertColumn(com.example.data.entities.ColumnEntity(tableId = tableId, name = "Name", type = com.example.data.entities.ColumnType.TEXT, displayOrder = 0))
+                repository.insertColumn(com.example.data.entities.ColumnEntity(tableId = tableId, name = "Notes", type = com.example.data.entities.ColumnType.LONG_TEXT, displayOrder = 1))
+                repository.insertColumn(com.example.data.entities.ColumnEntity(tableId = tableId, name = "Status", type = com.example.data.entities.ColumnType.SELECT, displayOrder = 2))
+                updateParentFolderTimestamp()
+            } catch(e: Exception) { _error.value = "Error creating table: ${e.localizedMessage}" }
+        }
+    }
+
     fun deleteFolder(folder: FolderEntity) {
         viewModelScope.launch {
             try {
@@ -165,6 +187,15 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
                 repository.deleteNote(note)
                 updateParentFolderTimestamp()
             } catch(e: Exception) { _error.value = "Error deleting note" }
+        }
+    }
+
+    fun deleteTable(table: com.example.data.entities.TableEntity) {
+        viewModelScope.launch {
+            try {
+                repository.deleteTable(table)
+                updateParentFolderTimestamp()
+            } catch(e: Exception) { _error.value = "Error deleting table" }
         }
     }
 
