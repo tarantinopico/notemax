@@ -82,10 +82,41 @@ fun DirectoryScreen(
 
     val accentColor = currentFolder?.color?.let { Color(it) } ?: MaterialTheme.colorScheme.primary
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     val photoUri = remember { mutableStateOf<Uri?>(null) }
+    val photoFile = remember { mutableStateOf<java.io.File?>(null) }
     val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success && photoUri.value != null) {
-            viewModel.createImage(photoUri.value.toString())
+        if (success && photoFile.value != null) {
+            viewModel.createImage(Uri.fromFile(photoFile.value).toString())
+        }
+    }
+
+    val launchCamera = {
+        try {
+            val tempFile = java.io.File.createTempFile("photo_", ".jpg", context.filesDir)
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
+            photoFile.value = tempFile
+            photoUri.value = uri
+            takePictureLauncher.launch(uri)
+        } catch (e: android.content.ActivityNotFoundException) {
+            scope.launch {
+                snackbarHostState.showSnackbar("No camera app found on this device.")
+            }
+        } catch (e: Exception) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Failed to open camera: ${e.message}")
+            }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            launchCamera()
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("Camera permission is required to take photos.")
+            }
         }
     }
 
@@ -117,6 +148,7 @@ fun DirectoryScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 AnimatedVisibility(visible = showFabMenu, enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom), exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom)) {
@@ -135,11 +167,12 @@ fun DirectoryScreen(
                         SmallFloatingActionButton(
                             onClick = { 
                                 showFabMenu = false
-                                // Create temp file for camera
-                                val tempFile = java.io.File.createTempFile("photo_", ".jpg", context.cacheDir)
-                                val uri = androidx.core.content.FileProvider.getUriForFile(context, "\${context.packageName}.provider", tempFile)
-                                photoUri.value = uri
-                                takePictureLauncher.launch(uri)
+                                val permission = android.Manifest.permission.CAMERA
+                                if (ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                    launchCamera()
+                                } else {
+                                    cameraPermissionLauncher.launch(permission)
+                                }
                             },
                             modifier = Modifier.padding(bottom = 16.dp),
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
