@@ -14,8 +14,23 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import com.example.data.InterfaceDensity
 import com.example.data.ThemeMode
+
+data class VisualEffects(val glassmorphism: Boolean, val uiTransparency: Boolean)
+val LocalVisualEffects = staticCompositionLocalOf { VisualEffects(false, false) }
+
+@Composable
+fun Modifier.glassmorphicOverlay(): Modifier {
+    val effects = LocalVisualEffects.current
+    return if (effects.glassmorphism) {
+        this.blur(16.dp)
+    } else {
+        this
+    }
+}
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,
@@ -63,6 +78,7 @@ fun AppTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     useDynamicColor: Boolean = true,
     interfaceDensity: InterfaceDensity = InterfaceDensity.DEFAULT,
+    visualEffects: VisualEffects = VisualEffects(false, false),
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
@@ -120,6 +136,7 @@ fun AppTheme(
     ) {
         CompositionLocalProvider(
             LocalDensity provides customDensity,
+            LocalVisualEffects provides visualEffects,
             content = content
         )
     }

@@ -22,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
@@ -185,109 +187,107 @@ fun NoteScreen(
                     tonalElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column {
-                        if (isSketchMode) {
-                            DrawingToolbar(
-                                activeTool = activeTool,
-                                onToolSelected = { activeTool = it },
-                                activeColor = activeColor,
-                                onColorSelected = { activeColor = it },
-                                activeStrokeWidth = activeStrokeWidth,
-                                onStrokeWidthSelected = { activeStrokeWidth = it },
-                                onClearAll = { 
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    currentStrokes = emptyList() 
+                        val effects = com.example.ui.theme.LocalVisualEffects.current
+                        val surfaceAlpha = if (effects.uiTransparency) 0.65f else 0.85f
+                        val glassmorphicMod = if (effects.glassmorphism) Modifier.blur(16.dp) else Modifier
+                        
+                        var activeCategory by remember { mutableStateOf(ToolbarCategory.TEXT) }
+                        
+                        LaunchedEffect(activeCategory) {
+                            if (activeCategory == ToolbarCategory.DRAW) {
+                                isSketchMode = true
+                            } else if (activeCategory != ToolbarCategory.DRAW && isSketchMode) {
+                                isSketchMode = false
+                            }
+                        }
+                        
+                        Column(modifier = glassmorphicMod) {
+                            Crossfade(targetState = activeCategory, label = "toolbar_crossfade") { category ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    when (category) {
+                                        ToolbarCategory.TEXT -> {
+                                            IconButton(onClick = { 
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                historyManager.undo()?.let { textState = it } 
+                                            }, enabled = historyManager.canUndo, modifier = Modifier.size(40.dp)) {
+                                                Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (historyManager.canUndo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                                            }
+                                            IconButton(onClick = { historyManager.redo()?.let { textState = it } }, enabled = historyManager.canRedo, modifier = Modifier.size(40.dp)) {
+                                                Icon(Icons.AutoMirrored.Filled.Redo, "Redo", tint = if (historyManager.canRedo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                                            }
+                                            HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                            ToolbarButton(text = "H1", onClick = { insertFormatting("# ", "") })
+                                            ToolbarButton(text = "H2", onClick = { insertFormatting("## ", "") })
+                                            ToolbarButton(text = "H3", onClick = { insertFormatting("### ", "") })
+                                            HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                            IconButton(onClick = { insertFormatting("**", "**") }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.FormatBold, "Bold", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            IconButton(onClick = { insertFormatting("<u>", "</u>") }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.FormatUnderlined, "Underline", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            IconButton(onClick = { insertFormatting("*", "*") }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.FormatItalic, "Italic", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                            IconButton(onClick = { insertFormatting("- ", "") }, modifier = Modifier.size(40.dp)) { Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "Bulleted List", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            IconButton(onClick = { insertFormatting("1. ", "") }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.FormatListNumbered, "Numbered List", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                        }
+                                        ToolbarCategory.INSERT -> {
+                                            IconButton(onClick = { insertFormatting("[", "](https://)") }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Link, "Web Link", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            IconButton(onClick = { insertFormatting("#", " ") }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Tag, "Tag", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            ToolbarButton(text = "@todo", onClick = { insertFormatting("@todo ", "") })
+                                            ToolbarButton(text = "#important", onClick = { insertFormatting("#important ", "") })
+                                            HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                            IconButton(onClick = { filePickerLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.AttachFile, "Attach File", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                        }
+                                        ToolbarCategory.DRAW -> {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                ToolButton("Pen", ToolType.PEN == activeTool) { 
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); activeTool = ToolType.PEN 
+                                                }
+                                                ToolButton("Marker", ToolType.HIGHLIGHTER == activeTool) { 
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); activeTool = ToolType.HIGHLIGHTER 
+                                                }
+                                                ToolButton("Eraser", ToolType.ERASER == activeTool) { 
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); activeTool = ToolType.ERASER 
+                                                }
+                                                IconButton(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); currentStrokes = emptyList() }) {
+                                                    Icon(Icons.Default.Clear, contentDescription = "Clear Canvas")
+                                                }
+                                                HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                                                val colors = listOf(Color.Black, Color.Red, Color.Blue, Color.Green, Color(0xFFFFA500), Color.Magenta)
+                                                colors.forEach { color ->
+                                                    Box(modifier = Modifier.size(28.dp).clip(androidx.compose.foundation.shape.CircleShape).background(color).clickable { 
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); activeColor = color 
+                                                    }, contentAlignment = Alignment.Center) {
+                                                        if (activeColor == color) Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        ToolbarCategory.DATA -> {
+                                            ToolbarButton(text = "Table", onClick = { insertFormatting("\n| Header | Header |\n| --- | --- |\n| Cell | Cell |\n", "") })
+                                            ToolbarButton(text = "Big Arrow", onClick = { insertFormatting("==>", "") })
+                                            ToolbarButton(text = "Check Box", onClick = { insertFormatting("[ ] ", "") })
+                                        }
+                                    }
                                 }
-                            )
-                            HorizontalDivider(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = { 
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    isSketchMode = !isSketchMode 
-                                }, 
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(if (isSketchMode) Icons.Default.Edit else Icons.Default.Create, "Toggle Sketch Mode", tint = if (isSketchMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            
-                            HorizontalDivider(
-                                modifier = Modifier.height(24.dp).width(1.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-                            )
-                            
-                            IconButton(onClick = { 
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                historyManager.undo()?.let { textState = it } 
-                            }, enabled = historyManager.canUndo, modifier = Modifier.size(40.dp)) {
-                                Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (historyManager.canUndo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                            HorizontalDivider(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                CategoryTab("Text", ToolbarCategory.TEXT, activeCategory) { activeCategory = it }
+                                CategoryTab("Insert", ToolbarCategory.INSERT, activeCategory) { activeCategory = it }
+                                CategoryTab("Draw", ToolbarCategory.DRAW, activeCategory) { activeCategory = it }
+                                CategoryTab("Data", ToolbarCategory.DATA, activeCategory) { activeCategory = it }
                             }
-                        IconButton(onClick = { historyManager.redo()?.let { textState = it } }, enabled = historyManager.canRedo, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.Redo, "Redo", tint = if (historyManager.canRedo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
-                        }
-
-                        HorizontalDivider(
-                            modifier = Modifier.height(24.dp).width(1.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-                        )
-                        
-                        ToolbarButton(text = "H1", onClick = { insertFormatting("# ", "") })
-                        ToolbarButton(text = "H2", onClick = { insertFormatting("## ", "") })
-                        ToolbarButton(text = "H3", onClick = { insertFormatting("### ", "") })
-                        ToolbarButton(text = "Table", onClick = { insertFormatting("\n| Header | Header |\n| --- | --- |\n| Cell | Cell |\n", "") })
-                        
-                        HorizontalDivider(
-                            modifier = Modifier.height(24.dp).width(1.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-                        )
-                        
-                        IconButton(onClick = { insertFormatting("**", "**") }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.FormatBold, "Bold", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(onClick = { insertFormatting("<u>", "</u>") }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.FormatUnderlined, "Underline", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(onClick = { insertFormatting("*", "*") }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.FormatItalic, "Italic", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        
-                        HorizontalDivider(
-                            modifier = Modifier.height(24.dp).width(1.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-                        )
-                        
-                        IconButton(onClick = { insertFormatting("- ", "") }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.FormatListBulleted, "Bulleted List", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(onClick = { insertFormatting("1. ", "") }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.FormatListNumbered, "Numbered List", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        
-                        HorizontalDivider(
-                            modifier = Modifier.height(24.dp).width(1.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-                        )
-
-                        IconButton(onClick = { insertFormatting("[", "](https://)") }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.Link, "Web Link", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(onClick = { filePickerLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.AttachFile, "Attach File", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
-        }
-    }
-) { padding ->
+        
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -562,6 +562,30 @@ fun NoteScreen(
             dismissButton = {
                 TextButton(onClick = { showDiscardDialog = false }) { Text("Cancel") }
             }
+        )
+    }
+}
+
+enum class ToolbarCategory { TEXT, INSERT, DRAW, DATA }
+
+@Composable
+fun CategoryTab(text: String, category: ToolbarCategory, activeCategory: ToolbarCategory, onSelect: (ToolbarCategory) -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    val isSelected = category == activeCategory
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+            .clickable { 
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onSelect(category) 
+            }
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = text, 
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
         )
     }
 }

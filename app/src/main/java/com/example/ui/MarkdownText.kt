@@ -4,59 +4,237 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
+sealed class MdBlock {
+    data class TextBlock(val text: String) : MdBlock()
+    data class TableBlock(val rows: List<List<String>>) : MdBlock()
+}
+
+fun parseMarkdownBlocks(text: String): List<MdBlock> {
+    val lines = text.split("\n")
+    val blocks = mutableListOf<MdBlock>()
+    var currentText = StringBuilder()
+    var inTable = false
+    val currentTable = mutableListOf<List<String>>()
+
+    for (line in lines) {
+        val trimmed = line.trim()
+        if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+            if (!inTable) {
+                if (currentText.isNotEmpty()) {
+                    blocks.add(MdBlock.TextBlock(currentText.toString()))
+                    currentText = StringBuilder()
+                }
+                inTable = true
+            }
+            val row = trimmed.removeSurrounding("|", "|").split("|").map { it.trim() }
+            if (row.all { it.replace("-", "").isBlank() }) {
+                // skip separator row
+            } else {
+                currentTable.add(row)
+            }
+        } else {
+            if (inTable) {
+                blocks.add(MdBlock.TableBlock(currentTable.toList()))
+                currentTable.clear()
+                inTable = false
+            }
+            currentText.append(line).append("\n")
+        }
+    }
+    
+    if (inTable) {
+        blocks.add(MdBlock.TableBlock(currentTable.toList()))
+    } else if (currentText.isNotEmpty()) {
+        blocks.add(MdBlock.TextBlock(currentText.toString()))
+    }
+    
+    return blocks
+}
 
 @Composable
 fun MarkdownText(text: String, modifier: Modifier = Modifier, onNoteLinkClick: ((String) -> Unit)? = null) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
-    val annotatedString = parseMarkdownImproved(text, colorScheme.primary)
+    val blocks = parseMarkdownBlocks(text)
     
-    ClickableText(
-        text = annotatedString,
-        modifier = modifier,
-        style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground, lineHeight = 28.sp),
-        onClick = { offset ->
-            annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
-                .firstOrNull()?.let { annotation ->
-                    try {
-                        val uri = Uri.parse(annotation.item)
-                        val intent = Intent(Intent.ACTION_VIEW, uri)
-                        if (annotation.item.startsWith("file://") || annotation.item.startsWith("content://")) {
-                            intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        }
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Could not open link", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            annotatedString.getStringAnnotations(tag = "WIKILINK", start = offset, end = offset)
-                .firstOrNull()?.let { annotation ->
-                    onNoteLinkClick?.invoke(annotation.item)
-                }
+    val inlineContent = mapOf(
+        "important" to InlineTextContent(
+            Placeholder(120.sp, 26.sp, PlaceholderVerticalAlign.TextCenter)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("IMPORTANT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        "todo" to InlineTextContent(
+            Placeholder(80.sp, 26.sp, PlaceholderVerticalAlign.TextCenter)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.tertiaryContainer),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("TODO", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+            }
+        },
+        "arrow" to InlineTextContent(
+            Placeholder(44.sp, 24.sp, PlaceholderVerticalAlign.TextCenter)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            }
         }
     )
+
+    Column(modifier = modifier) {
+        blocks.forEach { block ->
+            when (block) {
+                is MdBlock.TextBlock -> {
+                    val annotatedString = parseMarkdownImproved(block.text, colorScheme.primary)
+                    var layoutResult by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+                    Text(
+                        text = annotatedString,
+                        style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onBackground, lineHeight = 28.sp),
+                        inlineContent = inlineContent,
+                        modifier = Modifier.fillMaxWidth().pointerInput(Unit) {
+                            detectTapGestures { pos ->
+                                layoutResult?.let { layout ->
+                                    val offset = layout.getOffsetForPosition(pos)
+                                    annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                                        .firstOrNull()?.let { annotation ->
+                                            try {
+                                                val uri = Uri.parse(annotation.item)
+                                                val intent = Intent(Intent.ACTION_VIEW, uri)
+                                                if (annotation.item.startsWith("file://") || annotation.item.startsWith("content://")) {
+                                                    intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                                }
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "Could not open link", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    annotatedString.getStringAnnotations(tag = "WIKILINK", start = offset, end = offset)
+                                        .firstOrNull()?.let { annotation ->
+                                            onNoteLinkClick?.invoke(annotation.item)
+                                        }
+                                }
+                            }
+                        },
+                        onTextLayout = { layoutResult = it }
+                    )
+                }
+                is MdBlock.TableBlock -> {
+                    MarkdownTable(block)
+                }
+            }
+        }
+    }
 }
 
 @Composable
-fun parseMarkdownImproved(text: String, primaryColor: androidx.compose.ui.graphics.Color): AnnotatedString {
+fun MarkdownTable(block: MdBlock.TableBlock) {
+    if (block.rows.isEmpty()) return
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+            Column {
+                block.rows.forEachIndexed { rowIndex, row ->
+                    val isHeader = rowIndex == 0
+                    Row(
+                        modifier = Modifier.background(
+                            if (isHeader) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                            else if (rowIndex % 2 == 0) Color.Transparent
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                        )
+                    ) {
+                        row.forEach { cell ->
+                            Text(
+                                text = cell,
+                                style = if (isHeader) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isHeader) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isHeader) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .widthIn(min = 100.dp, max = 300.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun parseMarkdownImproved(text: String, primaryColor: Color): AnnotatedString {
     return buildAnnotatedString {
         val lines = text.split("\n")
         
         for ((index, line) in lines.withIndex()) {
-            if (line.isBlank() || line.isEmpty()) {
+            if (line.isEmpty()) {
                 append("\n")
                 continue
             }
@@ -81,14 +259,7 @@ fun parseMarkdownImproved(text: String, primaryColor: androidx.compose.ui.graphi
                     currentLineStyle = SpanStyle(fontWeight = FontWeight.Medium)
                 }
                 textToProcess.matches(Regex("^[\\-\\*]\\s+(.*)")) -> {
-                    // Bullet point: transform asterisk/dash to •
                     textToProcess = textToProcess.replaceFirst(Regex("^[\\-\\*]\\s+"), "•  ")
-                }
-                textToProcess.trim().startsWith("|") && textToProcess.trim().endsWith("|") -> {
-                    currentLineStyle = SpanStyle(
-                        background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
                 }
             }
             
@@ -103,8 +274,8 @@ fun parseMarkdownImproved(text: String, primaryColor: androidx.compose.ui.graphi
     }
 }
 
-fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryColor: androidx.compose.ui.graphics.Color) {
-    val regex = Regex("(\\[\\[.*?\\]\\])|(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
+fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryColor: Color) {
+    val regex = Regex("(#important)|(@todo)|(==>)|(\\[\\[.*?\\]\\])|(\\*\\*.*?\\*\\*)|(<u>.*?</u>)|(\\*.*?\\*)|(\\[.*?\\]\\(.*?\\))")
     val matches = regex.findAll(text)
     
     var currentIndex = 0
@@ -115,6 +286,15 @@ fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryC
         
         val matchText = match.value
         when {
+            matchText == "#important" -> {
+                builder.appendInlineContent("important", "[Important]")
+            }
+            matchText == "@todo" -> {
+                builder.appendInlineContent("todo", "[Todo]")
+            }
+            matchText == "==>" -> {
+                builder.appendInlineContent("arrow", "==>")
+            }
             matchText.startsWith("[[") && matchText.endsWith("]]") -> {
                 val title = matchText.substring(2, matchText.length - 2)
                 builder.pushStringAnnotation(tag = "WIKILINK", annotation = title)
@@ -157,3 +337,4 @@ fun parseInlineMarkdown(builder: AnnotatedString.Builder, text: String, primaryC
         builder.append(text.substring(currentIndex))
     }
 }
+

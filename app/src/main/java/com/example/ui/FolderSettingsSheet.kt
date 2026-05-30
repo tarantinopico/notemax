@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,12 +58,16 @@ fun FolderSettingsSheet(
     var isLocked by remember { mutableStateOf(folder.isLocked) }
     var isSaving by remember { mutableStateOf(false) }
 
+    val effects = com.example.ui.theme.LocalVisualEffects.current
+    val surfaceAlpha = if (effects.uiTransparency) 0.8f else 1f
+    val glassmorphicMod = if (effects.glassmorphism) Modifier.blur(16.dp) else Modifier
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = surfaceAlpha),
         dragHandle = { BottomSheetDefaults.DragHandle() },
         shape = MaterialTheme.shapes.extraLarge,
-        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+        modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars).then(glassmorphicMod)
     ) {
         Column(
             modifier = Modifier

@@ -34,11 +34,14 @@ class MainActivity : FragmentActivity() {
             val themeMode by app.settingsManager.themeMode.collectAsStateWithLifecycle()
             val useDynamicColor by app.settingsManager.useDynamicColor.collectAsStateWithLifecycle()
             val interfaceDensity by app.settingsManager.interfaceDensity.collectAsStateWithLifecycle()
+            val glassmorphism by app.settingsManager.isGlassmorphismEnabled.collectAsStateWithLifecycle()
+            val uiTransparency by app.settingsManager.isUiTransparencyEnabled.collectAsStateWithLifecycle()
 
             AppTheme(
                 themeMode = themeMode,
                 useDynamicColor = useDynamicColor,
-                interfaceDensity = interfaceDensity
+                interfaceDensity = interfaceDensity,
+                visualEffects = com.example.ui.theme.VisualEffects(glassmorphism, uiTransparency)
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

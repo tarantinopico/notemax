@@ -95,6 +95,61 @@ fun SettingsScreen(
                 }
             }
 
+            // Visual Effects Section
+            val isGlassmorphismEnabled by settingsManager.isGlassmorphismEnabled.collectAsState()
+            val isUiTransparencyEnabled by settingsManager.isUiTransparencyEnabled.collectAsState()
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = "Visual Effects",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.large)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .clickable { settingsManager.setGlassmorphismEnabled(!isGlassmorphismEnabled) }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Enable Glassmorphism (Blur)", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "Applies a premium blur to overlays and surfaces",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = isGlassmorphismEnabled, onCheckedChange = { settingsManager.setGlassmorphismEnabled(it) })
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.large)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .clickable { settingsManager.setUiTransparencyEnabled(!isUiTransparencyEnabled) }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("UI Transparency", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "Use liquid-glass style translucent backgrounds",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = isUiTransparencyEnabled, onCheckedChange = { settingsManager.setUiTransparencyEnabled(it) })
+                }
+            }
+
             // Density Section
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
