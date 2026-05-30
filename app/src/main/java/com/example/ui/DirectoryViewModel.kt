@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.NoteMaxRepository
 import com.example.data.entities.FolderEntity
+import com.example.data.entities.ImageEntity
 import com.example.data.entities.NoteEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +47,11 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
     val notes = _currentFolderId.flatMapLatest { parentId ->
         repository.getNotes(parentId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val images = _currentFolderId.flatMapLatest { parentId ->
+        repository.getImages(parentId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun navigateToFolder(folderId: Long?) {
         _currentFolderId.value = folderId
@@ -64,7 +70,7 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
         }
     }
 
-    fun updateFolderSettings(color: Long?, iconName: String?, defaultViewModeString: String?, showCompactPreviews: Boolean, onSuccess: () -> Unit = {}) {
+    fun updateFolderSettings(color: Long?, iconName: String?, defaultViewModeString: String?, showCompactPreviews: Boolean, isLocked: Boolean, onSuccess: () -> Unit = {}) {
         val folder = currentFolder.value ?: return
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -74,6 +80,7 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
                         iconName = iconName,
                         defaultViewModeString = defaultViewModeString,
                         showCompactPreviews = showCompactPreviews,
+                        isLocked = isLocked,
                         updatedAt = System.currentTimeMillis()
                     )
                 )
@@ -85,6 +92,35 @@ class DirectoryViewModel(private val repository: NoteMaxRepository) : ViewModel(
                     _error.value = "Error saving folder settings"
                 }
             }
+        }
+    }
+
+    fun createImage(uri: String) {
+        val parentId = _currentFolderId.value ?: return
+        viewModelScope.launch {
+            try {
+                repository.insertImage(ImageEntity(uri = uri, parentFolderId = parentId))
+                updateParentFolderTimestamp()
+            } catch (e: Exception) {
+                _error.value = "Error saving image"
+            }
+        }
+    }
+
+    fun deleteImage(image: ImageEntity) {
+        viewModelScope.launch {
+            try {
+                repository.deleteImageById(image.id)
+                updateParentFolderTimestamp()
+            } catch (e: Exception) {
+                _error.value = "Error deleting image"
+            }
+        }
+    }
+
+    fun lockFolder(folder: FolderEntity) {
+        viewModelScope.launch {
+            repository.updateFolder(folder.copy(isLocked = true, updatedAt = System.currentTimeMillis()))
         }
     }
 

@@ -25,6 +25,7 @@ data class FolderEntity(
     val iconName: String? = null,
     val defaultViewModeString: String? = null,
     val showCompactPreviews: Boolean = false,
+    val isLocked: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

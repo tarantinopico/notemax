@@ -84,6 +84,12 @@ fun parseMarkdownImproved(text: String, primaryColor: androidx.compose.ui.graphi
                     // Bullet point: transform asterisk/dash to •
                     textToProcess = textToProcess.replaceFirst(Regex("^[\\-\\*]\\s+"), "•  ")
                 }
+                textToProcess.trim().startsWith("|") && textToProcess.trim().endsWith("|") -> {
+                    currentLineStyle = SpanStyle(
+                        background = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
             }
             
             withStyle(currentLineStyle) {

@@ -48,12 +48,13 @@ val predefinedColors = listOf(
 fun FolderSettingsSheet(
     folder: FolderEntity,
     onDismiss: () -> Unit,
-    onSave: (color: Long?, iconName: String?, viewMode: String?, compactPreviews: Boolean, onSuccess: () -> Unit) -> Unit
+    onSave: (color: Long?, iconName: String?, viewMode: String?, compactPreviews: Boolean, isLocked: Boolean, onSuccess: () -> Unit) -> Unit
 ) {
     var selectedColor by remember { mutableStateOf(folder.color) }
     var selectedIcon by remember { mutableStateOf(folder.iconName) }
     var selectedViewMode by remember { mutableStateOf(folder.defaultViewModeString) }
     var showCompactPreviews by remember { mutableStateOf(folder.showCompactPreviews) }
+    var isLocked by remember { mutableStateOf(folder.isLocked) }
     var isSaving by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -172,6 +173,14 @@ fun FolderSettingsSheet(
                     Switch(checked = showCompactPreviews, onCheckedChange = { showCompactPreviews = it })
                 }
 
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Secure Folder", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Require biometrics to open", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = isLocked, onCheckedChange = { isLocked = it })
+                }
+                
                 Text("Default View Mode", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
                 SegmentedViewModePicker(selectedViewMode = selectedViewMode) { mode ->
                     selectedViewMode = mode
@@ -184,7 +193,7 @@ fun FolderSettingsSheet(
             Button(
                 onClick = {
                     isSaving = true
-                    onSave(selectedColor, selectedIcon, selectedViewMode, showCompactPreviews) {
+                    onSave(selectedColor, selectedIcon, selectedViewMode, showCompactPreviews, isLocked) {
                         isSaving = false
                         onDismiss()
                     }

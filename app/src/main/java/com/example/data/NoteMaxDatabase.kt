@@ -8,13 +8,16 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.dao.FolderDao
 import com.example.data.dao.NoteDao
+import com.example.data.dao.ImageDao
 import com.example.data.entities.FolderEntity
+import com.example.data.entities.ImageEntity
 import com.example.data.entities.NoteEntity
 
-@Database(entities = [FolderEntity::class, NoteEntity::class], version = 4, exportSchema = false)
+@Database(entities = [FolderEntity::class, NoteEntity::class, ImageEntity::class], version = 5, exportSchema = false)
 abstract class NoteMaxDatabase : RoomDatabase() {
     abstract fun folderDao(): FolderDao
     abstract fun noteDao(): NoteDao
+    abstract fun imageDao(): ImageDao
 
     companion object {
         @Volatile
@@ -43,6 +46,13 @@ abstract class NoteMaxDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE folders ADD COLUMN isLocked INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `images` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `uri` TEXT NOT NULL, `parentFolderId` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)")
+            }
+        }
+
         fun getDatabase(context: Context): NoteMaxDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -50,7 +60,7 @@ abstract class NoteMaxDatabase : RoomDatabase() {
                     NoteMaxDatabase::class.java,
                     "notemax_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

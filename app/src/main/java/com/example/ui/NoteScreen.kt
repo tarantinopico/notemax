@@ -242,6 +242,7 @@ fun NoteScreen(
                         ToolbarButton(text = "H1", onClick = { insertFormatting("# ", "") })
                         ToolbarButton(text = "H2", onClick = { insertFormatting("## ", "") })
                         ToolbarButton(text = "H3", onClick = { insertFormatting("### ", "") })
+                        ToolbarButton(text = "Table", onClick = { insertFormatting("\n| Header | Header |\n| --- | --- |\n| Cell | Cell |\n", "") })
                         
                         HorizontalDivider(
                             modifier = Modifier.height(24.dp).width(1.dp),
